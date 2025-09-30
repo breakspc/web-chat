@@ -3,15 +3,28 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Chat v5 — 단일파일</title>
+<title>Chat v6 — 단일파일</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
+  /* Root variables for theming */
   :root{
-    --bg:#f4f7fb; --card:#fff; --accent:#2563eb; --muted:#6b7280; --border:rgba(15,23,42,0.06);
+    --bg:#f4f7fb; --card:#fff; --text-color:#1e293b; --accent:#2563eb; --muted:#6b7280; --border:rgba(15,23,42,0.06);
     --mention-bg:#fff7cc; --reply-bg:#ecfdf5;
+    /* Custom: Solid colors for owned bubble */
+    --own-bubble-bg:#e0f2ff; 
   }
-  html.dark{--bg:#061022;--card:#0b1220;--accent:#3b82f6;--muted:#9aa3b2;--border:rgba(255,255,255,0.06);--mention-bg:#2b2a0f;--reply-bg:#063b1f}
-  body{background:var(--bg);font-family:Inter,system-ui,'Noto Sans KR',sans-serif;color:inherit;margin:0;padding:18px}
+  html.dark{
+    --bg:#061022;--card:#0b1220;--text-color:#e2e8f0;--accent:#3b82f6;--muted:#9aa3b2;--border:rgba(255,255,255,0.06);
+    --mention-bg:#2b2a0f;--reply-bg:#063b1f;
+    /* Custom: Solid colors for owned bubble */
+    --own-bubble-bg:#0f3f6e;
+  }
+  body{
+    background:var(--bg);
+    font-family:Inter,system-ui,'Noto Sans KR',sans-serif;
+    color:var(--text-color); /* <-- 다크모드 텍스트 색상 변경 */
+    margin:0;padding:18px
+  }
   .app{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:320px 1fr;gap:18px}
   .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 8px 24px rgba(2,6,23,0.06);border:1px solid var(--border)}
   .avatar{width:44px;height:44px;border-radius:999px;object-fit:cover;border:1px solid var(--border);cursor:pointer}
@@ -27,8 +40,25 @@
   .msg-block{display:flex;gap:10px;align-items:flex-start}
   .msg-block.own{flex-direction:row-reverse}
   .avatar-col{width:44px}
-  .bubble{display:inline-block;padding:10px;border-radius:12px;min-width:90px;max-width:68%;word-break:break-word;white-space:pre-wrap;border:1px solid var(--border);background:var(--card)}
-  .bubble.own{background:linear-gradient(90deg,#f0f7ff,#fbfdff);border-color:rgba(37,99,235,0.12)}
+  .bubble{
+    display:inline-block;padding:10px;border-radius:12px;min-width:90px;max-width:68%;word-break:break-word;white-space:pre-wrap;
+    border:1px solid var(--border);background:var(--card);
+    margin-bottom: 4px; /* <--- 연속된 메시지 세로 간격 추가 */
+  }
+  .bubble.own{
+    background:var(--own-bubble-bg); /* <-- 그라데이션 제거, 단색 배경 */
+    border-color:rgba(37,99,235,0.12);
+  }
+  /* 연속된 메시지 세로 정렬 */
+  .messages-stack{
+    display: flex;
+    flex-direction: column; /* <-- 세로 정렬 */
+    align-items: flex-start;
+  }
+  .msg-block.own .messages-stack{
+    align-items: flex-end;
+  }
+
   .meta-line{font-size:12px;color:var(--muted);margin-bottom:6px;display:flex;gap:8px;align-items:center}
   .controls{opacity:0;transition:opacity .12s;display:flex;gap:6px;align-items:center}
   .msg-block:hover .controls{opacity:1}
@@ -59,7 +89,7 @@
         <div id="displayTag" class="text-sm text-gray-500">#—</div>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-        <button id="darkToggle" class="btn-ghost">🌙</button>
+        <button id="darkToggle" class="btn-ghost" style="font-size:12px">다크 모드</button>
       </div>
     </div>
 
@@ -69,7 +99,7 @@
 
     <div id="roomsList" class="rooms"></div>
 
-    <div class="invite-list" id="inviteListWrap">
+    <div class="invite-list" id="inviteListWrap" style="display:none">
       <div class="text-sm text-gray-500 mb-2">초대 알림</div>
       <div id="inviteList"></div>
     </div>
@@ -99,7 +129,7 @@
     <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
       <input id="msgInput" placeholder="메시지 입력. @태그로 멘션" style="flex:1;padding:.6rem;border-radius:10px;border:1px solid var(--border)"/>
       <input id="fileInput" type="file" style="display:none" />
-      <button id="attachBtn" class="btn-ghost">📎</button>
+      <button id="attachBtn" class="icon-btn" style="font-size:20px;font-weight:900">🔗</button>
       <button id="sendBtn" class="btn">전송</button>
     </div>
   </div>
@@ -170,13 +200,25 @@ function getLocalProfile(){ return JSON.parse(localStorage.getItem('local_profil
 function setLocalProfile(p){ localStorage.setItem('local_profile', JSON.stringify(p)); }
 
 /* ---------- UI behavior ---------- */
-darkToggle.addEventListener('click', ()=>{ document.documentElement.classList.toggle('dark'); darkToggle.textContent = document.documentElement.classList.contains('dark') ? '☀️' : '🌙'; });
+darkToggle.addEventListener('click', ()=>{ 
+  document.documentElement.classList.toggle('dark'); 
+  darkToggle.textContent = document.documentElement.classList.contains('dark') ? '라이트 모드' : '다크 모드';
+  localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+});
+
+// Initial theme check
+if(localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  document.documentElement.classList.add('dark');
+  darkToggle.textContent = '라이트 모드';
+} else {
+  darkToggle.textContent = '다크 모드';
+}
 
 // profile click -> modal (persistent)
 profileAvatar.addEventListener('click', ()=> openProfileModal() );
 
-/* ---------- Modals ---------- */
-function openModal(html){ // basic modal creation
+/* ---------- Modals (Functions unchanged from previous version, omitted for brevity) ---------- */
+function openModal(html){ 
   const m = document.createElement('div'); m.className='modal-backdrop';
   m.innerHTML = `<div class="modal">${html}</div>`;
   m.onclick = (e)=>{ if(e.target===m) m.remove(); };
@@ -241,7 +283,7 @@ async function openEditRoomNameModal(roomId, currentName){
   });
 }
 
-/* Custom Modals for Initial Setup */
+/* Custom Modals for Initial Setup (unchanged) */
 async function openInitialProfileSetup(user){
   return new Promise(resolve => {
     const defaultTag = (user.email?user.email.split('@')[0]:'user');
@@ -298,7 +340,7 @@ async function openInitialAnonProfileSetup(){
   });
 }
 
-/* Profile modal: edit name/tag, login/logout */
+/* Profile modal: edit name/tag, login/logout (unchanged) */
 function openProfileModal(){
   const local = getLocalProfile();
   const logged = !!auth.currentUser;
@@ -357,6 +399,10 @@ function openProfileModal(){
              editModal.querySelector('#tagError').textContent = '이미 사용 중인 태그입니다. 다른 태그를 입력하세요.';
              return;
           }
+          // Delete old tag if changed
+          if(local.tag && local.tag !== newTag) {
+            await db.ref('tags/' + local.tag).remove();
+          }
           await db.ref('users/'+auth.currentUser.uid).update({ name:newName, tag:newTag });
         } else {
           local.name = newName; local.tag = newTag; setLocalProfile(local);
@@ -409,13 +455,15 @@ function openProfileModal(){
   };
 }
 
+
 /* ---------- ensure profile & presence ---------- */
 async function ensureProfile(){
+  const myUid = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
   if(auth.currentUser){
     const u = auth.currentUser;
     const snap = await db.ref('users/'+u.uid).once('value'); const profile = snap.val() || {};
     if(!profile.tag || !profile.name){
-      await openInitialProfileSetup(u); // Use custom modal for first time setup
+      await openInitialProfileSetup(u); 
     } else {
       displayNameEl.textContent = profile.name; displayTagEl.textContent = '#'+profile.tag;
       if(profile.photoURL) profileAvatar.src = profile.photoURL;
@@ -424,13 +472,14 @@ async function ensureProfile(){
     const presRef = db.ref('presence/'+u.uid);
     presRef.set({ online:true, ts: now() });
     presRef.onDisconnect().remove();
-    attachInvitationsListener(u.uid);
+    // attachInvitationsListener(u.uid); // Invitation removed
   } else {
     if(!localStorage.getItem('local_profile')){
-      await openInitialAnonProfileSetup(); // Use custom modal for anon setup
+      await openInitialAnonProfileSetup(); 
     }
     const p = getLocalProfile();
-    displayNameEl.textContent = p.name; displayTagEl.textContent = '#'+p.tag; if(p.photoURL) profileAvatar.src = p.photoURL;
+    displayNameEl.textContent = p.name; displayTagEl.textContent = '#'+p.tag; 
+    if(p.photoURL) profileAvatar.src = p.photoURL;
   }
 }
 
@@ -448,63 +497,95 @@ function openCreateRoomModal(){
   modal.querySelector('#createCancel').onclick = ()=> modal.remove();
   modal.querySelector('#createOk').onclick = async ()=>{
     const name = modal.querySelector('#newRoomName').value.trim(); 
-    if(!name) return toast('방 이름을 입력하세요'); // Custom modal, using toast for validation error
+    if(!name) return toast('방 이름을 입력하세요'); 
     const rid = 'r_'+Math.random().toString(36).slice(2,8);
     const me = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
+    // 방 생성 시 자동으로 방 멤버로 추가
     await db.ref('rooms/'+rid).set({ id:rid, name, createdAt: now(), owner:me, members: { [me]: true } });
     modal.remove(); loadRooms();
   };
 }
 
+// **요청사항 반영: 모든 방에 자동으로 들어가도록 수정**
 async function loadRooms(){
-  const snap = await db.ref('rooms').once('value'); const data = snap.val()||{};
+  const allRoomsSnap = await db.ref('rooms').once('value'); 
+  const data = allRoomsSnap.val()||{};
   roomsList.innerHTML='';
   const myUid = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
+
+  // 1. 모든 방에 현재 사용자를 자동으로 추가
+  const updates = {};
+  let roomsToAdd = [];
+  Object.keys(data).forEach(id => {
+    const r = data[id];
+    // 만약 멤버 목록에 없다면, 업데이트 목록에 추가
+    if (!r.members || !r.members[myUid]) {
+      updates['rooms/' + id + '/members/' + myUid] = true;
+      roomsToAdd.push(Object.assign({id}, r));
+    }
+  });
+
+  // DB 업데이트 (await 필요 없음)
+  if(Object.keys(updates).length > 0) {
+    db.ref().update(updates).then(() => {
+      // DB 업데이트 후 다시 로드 (혹은 새로 추가된 방만 UI에 추가)
+      // 단순화를 위해 업데이트가 완료된 후 다시 불러옴
+      loadRoomsAfterJoin();
+    }).catch(error => {
+      console.error("Auto-join error:", error);
+      loadRoomsAfterJoin(); // 에러가 나도 일단 현재 방 목록으로 진행
+    });
+  } else {
+    // 이미 모든 방에 들어가 있다면 바로 로드
+    loadRoomsAfterJoin();
+  }
+}
+
+async function loadRoomsAfterJoin() {
+  const finalSnap = await db.ref('rooms').once('value'); 
+  const data = finalSnap.val()||{};
+  roomsList.innerHTML='';
+  const myUid = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
+
   Object.keys(data).sort((a,b)=> (data[a].createdAt||0)-(data[b].createdAt||0)).forEach(id=>{
     const r = data[id];
-    if(r.members && !r.members[myUid]) return; // only if member
+    // 이 시점에서는 모든 방에 들어가 있기 때문에 member 체크는 생략
     const el = document.createElement('div'); el.className='room-item'; el.dataset.id=id;
     const thumb = r.thumb || 'https://placehold.co/36';
     el.innerHTML = `<img class="avatar" src="${thumb}" /><div style="flex:1"><div style="font-weight:600">${r.name}</div><div class="text-sm text-gray-500">${r.lastMessage?escapeHtml(r.lastMessage.slice(0,48)):'설명 없음'}</div></div>`;
-    // actions: invite (open modal) and edit (pencil)
+    
     const actions = document.createElement('div'); actions.style.marginLeft='8px';
-    const inviteBtn = document.createElement('button'); inviteBtn.className='btn-ghost'; inviteBtn.textContent='초대';
+    // 초대 버튼은 이제 필요 없으나 UI 유지를 위해 주석 처리하거나 제거 (요청에 따라 제거하지 않고 텍스트 아이콘만 변경)
+    const inviteBtn = document.createElement('button'); 
+    inviteBtn.className='icon-btn'; 
+    inviteBtn.textContent='👤+'; // 텍스트 아이콘
+    inviteBtn.title='초대';
     inviteBtn.onclick = (e)=>{ e.stopPropagation(); openInviteModal(id); };
-    const pencil = document.createElement('button'); pencil.className='btn-ghost'; pencil.textContent='✏️';
+    
+    const pencil = document.createElement('button'); 
+    pencil.className='icon-btn'; 
+    pencil.textContent='⚙'; // 텍스트 아이콘
+    pencil.title='설정';
     pencil.onclick = async (e)=>{ 
       e.stopPropagation(); 
-      await openEditRoomNameModal(id, r.name); // Using custom modal
+      await openEditRoomNameModal(id, r.name); 
       loadRooms(); 
     };
-    actions.appendChild(inviteBtn); actions.appendChild(pencil);
+    
+    actions.appendChild(inviteBtn); 
+    actions.appendChild(pencil);
     el.appendChild(actions);
     el.addEventListener('click', ()=> selectRoom(id));
     roomsList.appendChild(el);
   });
 }
 
-/* ---------- invitations: left-bottom list (persistent) ---------- */
+/* ---------- invitations: left-bottom list (disabled) ---------- */
 function attachInvitationsListener(uid){
-  const ref = db.ref('invitations/'+uid);
-  // child_added -> show in left inviteList
-  ref.on('child_added', snap=>{
-    const key=snap.key; const val=snap.val();
-    const node = document.createElement('div'); node.className='invite-item'; node.id='inv_'+key;
-    node.innerHTML = `<div>방 초대: ${val.room}</div>`;
-    const area = document.createElement('div');
-    const acc = document.createElement('button'); acc.className='btn'; acc.textContent='수락';
-    acc.onclick = async ()=>{ await db.ref('rooms/'+val.room+'/members/'+uid).set(true); await db.ref('invitations/'+uid+'/'+key).remove(); node.remove(); loadRooms(); toast('수락됨'); };
-    const dec = document.createElement('button'); dec.className='btn-ghost'; dec.textContent='거절';
-    dec.onclick = async ()=>{ await db.ref('invitations/'+uid+'/'+key).remove(); node.remove(); };
-    area.appendChild(acc); area.appendChild(dec);
-    node.appendChild(area);
-    inviteList.prepend(node);
-  });
-  // removed
-  ref.on('child_removed', snap=>{ const el=document.getElementById('inv_'+snap.key); if(el) el.remove(); });
+  // 기존 초대 로직은 요청사항에 따라 비활성화
 }
 
-/* ---------- invite modal (send) ---------- */
+/* ---------- invite modal (send) (unchanged) ---------- */
 function openInviteModal(roomId){
   const modal = openModal(`<div style="display:flex;flex-direction:column;gap:8px">
     <div style="font-weight:700">초대 보내기</div>
@@ -517,25 +598,31 @@ function openInviteModal(roomId){
   modal.querySelector('#inviteCancel').onclick = ()=> modal.remove();
   modal.querySelector('#inviteSend').onclick = async ()=>{
     const tag = modal.querySelector('#inviteTag').value.trim().toLowerCase(); 
-    if(!tag) return toast('태그를 입력하세요'); // Custom modal, using toast for validation error
+    if(!tag) return toast('태그를 입력하세요'); 
     const tSnap = await db.ref('tags/'+tag).once('value'); 
-    if(!tSnap.exists()) return toast('해당 태그를 가진 사용자가 없습니다.'); // Custom modal, using toast for validation error
+    if(!tSnap.exists()) return toast('해당 태그를 가진 사용자가 없습니다.'); 
     const targetUid = tSnap.val();
-    await db.ref('invitations/'+targetUid).push({ room: roomId, from: auth.currentUser?auth.currentUser.uid:getLocalProfile().uid, ts: now() });
-    modal.remove(); toast('초대 발송됨');
+    
+    // **초대 발송 대신, 바로 해당 유저를 방 멤버로 추가**
+    await db.ref('rooms/'+roomId+'/members/'+targetUid).set(true);
+    
+    modal.remove(); 
+    toast(tag + '님을 방에 추가했습니다.'); // 초대 발송 메시지 변경
   };
 }
 
 /* ---------- select room & messages ---------- */
+// **요청사항 반영: 방 나가기 -> DB members에서 완전히 삭제**
 leaveRoomBtn.onclick = async ()=>{
-  if(await openConfirmModal('방 나가기', '정말로 이 방을 나가시겠습니까?')) {
+  if(await openConfirmModal('방 나가기', '정말로 이 방을 나가시겠습니까? 나가면 방 목록에서 사라집니다.')) {
     const myUid = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
+    // DB에서 멤버 정보 삭제
     await db.ref('rooms/'+currentRoom+'/members/'+myUid).remove();
     // clear chat area and load rooms
     currentRoom = null; roomTitle.textContent = '— 방 선택 —'; leaveRoomBtn.style.display='none';
     chatBody.innerHTML = '';
     loadRooms();
-    toast('방에서 나왔습니다.');
+    toast('방에서 나왔습니다. 방 목록에서 해당 방이 사라졌습니다.');
   }
 };
 
@@ -556,11 +643,12 @@ async function selectRoom(roomId){
 
 /* message grouping & render */
 function insertMessage(m){
-  // group consecutive messages by same author into one msg-block
   const lastBlock = chatBody.lastElementChild;
   const local = getLocalProfile();
   const myUid = auth.currentUser?auth.currentUser.uid:local.uid;
   const isMe = (m.uid && myUid && m.uid===myUid) || (!m.uid && m.author===local.name);
+  
+  // 그룹핑 기준: 같은 작성자 && 5분 이내
   if(lastBlock && lastBlock.dataset && lastBlock.dataset.author === (m.uid||m.author) && (m.ts - Number(lastBlock.dataset.lastTs) < 5*60*1000)){
     // append bubble to lastBlock stack
     const stack = lastBlock.querySelector('.messages-stack');
@@ -570,41 +658,57 @@ function insertMessage(m){
     // create new block
     const block = document.createElement('div'); block.className='msg-block' + (isMe?' own':'');
     block.dataset.author = m.uid||m.author; block.dataset.lastTs = m.ts;
+    
     const avatarCol = document.createElement('div'); avatarCol.className='avatar-col';
     const img = document.createElement('img'); img.className='avatar'; img.src = m.photoURL || (local.photoURL || 'https://placehold.co/88');
     avatarCol.appendChild(img);
+    
     const container = document.createElement('div'); container.style.minWidth='120px';
+    
     // top meta line: nickname, tag, time (왼쪽에서부터)
     const meta = document.createElement('div'); meta.className='meta-line';
     const nameSpan = document.createElement('span'); nameSpan.innerHTML = `<strong>${escapeHtml(m.author||'익명')}</strong>`;
     const tagSpan = document.createElement('span'); tagSpan.className='text-sm text-gray-500'; tagSpan.textContent = '#'+(m.tag||'—');
     const timeSpan = document.createElement('span'); timeSpan.className='text-sm text-gray-500'; timeSpan.textContent = new Date(m.ts).toLocaleTimeString();
     meta.appendChild(nameSpan); meta.appendChild(tagSpan); meta.appendChild(timeSpan);
+    
     const stack = document.createElement('div'); stack.className='messages-stack';
     appendBubble(stack, m, isMe);
+    
     // actions (show on hover)
     const actions = document.createElement('div'); actions.className='controls'; actions.style.marginTop='6px';
+    
     // reply
-    const replyBtn = document.createElement('button'); replyBtn.className='icon-btn'; replyBtn.textContent='↩'; replyBtn.title='답장';
+    const replyBtn = document.createElement('button'); replyBtn.className='icon-btn'; replyBtn.textContent='RE'; replyBtn.title='답장'; // 텍스트 아이콘
     replyBtn.onclick = ()=>{ replyTo = m.key; replyText.textContent = m.text ? m.text.slice(0,120) : '[첨부]'; replyPreview.style.display='flex'; };
     actions.appendChild(replyBtn);
+    
     // edit/delete for own
     if(isMe){
-      const edit = document.createElement('button'); edit.className='icon-btn'; edit.textContent='✏'; edit.title='수정';
+      const edit = document.createElement('button'); edit.className='icon-btn'; edit.textContent='ED'; edit.title='수정'; // 텍스트 아이콘
       edit.onclick = async ()=>{ 
-        const newText = await openEditMessageModal(m.text||''); // Using custom modal
+        const newText = await openEditMessageModal(m.text||''); 
         if(newText!==null) await db.ref('rooms/'+currentRoom+'/messages/'+m.key).update({ text:newText, edited:true }); 
       };
-      const del = document.createElement('button'); del.className='icon-btn delete'; del.textContent='🗑'; del.title='삭제';
+      const del = document.createElement('button'); del.className='icon-btn delete'; del.textContent='DE'; del.title='삭제'; // 텍스트 아이콘
       del.onclick = async ()=>{ 
-        if(await openConfirmModal('메시지 삭제','정말로 이 메시지를 삭제하시겠습니까?')) { // Using custom modal
+        if(await openConfirmModal('메시지 삭제','정말로 이 메시지를 삭제하시겠습니까?')) { 
           await db.ref('rooms/'+currentRoom+'/messages/'+m.key).remove(); 
         }
       };
       actions.appendChild(edit); actions.appendChild(del);
     }
     container.appendChild(meta); container.appendChild(stack); container.appendChild(actions);
-    block.appendChild(avatarCol); block.appendChild(container);
+    
+    // 내 메시지일 경우 순서 변경
+    if(isMe){
+      block.appendChild(container); 
+      block.appendChild(avatarCol);
+    } else {
+      block.appendChild(avatarCol); 
+      block.appendChild(container);
+    }
+    
     chatBody.appendChild(block);
     chatBody.scrollTop = chatBody.scrollHeight;
   }
@@ -613,6 +717,7 @@ function insertMessage(m){
 
 function appendBubble(stack, m, isMe){
   const bubble = document.createElement('div'); bubble.id='msg_'+m.key; bubble.className='bubble ' + (isMe?'own':'other');
+  
   // reply snippet inside bubble if m.replyTo
   if(m.replyTo){
     const q = document.createElement('div'); q.className='reply-small'; q.textContent='답글 로딩...'; bubble.appendChild(q);
@@ -620,7 +725,7 @@ function appendBubble(stack, m, isMe){
       if(snap.exists()){
         q.textContent = '답글 → '+ (snap.val().text||'[첨부]');
         q.onclick = ()=>{ const tgt = document.getElementById('msg_'+m.replyTo); if(tgt){ tgt.scrollIntoView({behavior:'smooth',block:'center'}); tgt.classList.add('reply-target'); setTimeout(()=>tgt.classList.remove('reply-target'),1200); } };
-        // if reply text longer than composing? we will set max-width and wrap
+        // CSS 조정은 유지
         const len = (snap.val().text||'').length;
         const approx = Math.min(520, Math.max(120, Math.floor(len*6)));
         if(approx > (document.querySelector('.chat-body').clientWidth/3)) { q.style.whiteSpace='normal'; }
@@ -674,7 +779,7 @@ function removeMessageFromUI(key){
   }
 }
 
-/* ---------- send message ---------- */
+/* ---------- send message (unchanged) ---------- */
 attachBtn.addEventListener('click', ()=> fileInput.click());
 fileInput.addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; selectedFile=f; toast('파일 준비됨: '+f.name); });
 
@@ -701,7 +806,7 @@ async function sendMessage(){
   sending=false; sendBtn.disabled=false; sendBtn.textContent='전송';
 }
 
-/* upload helper */
+/* upload helper (unchanged) */
 async function uploadFile(file,prefix){
   const path = (prefix||'uploads') + '/' + Date.now() + '_' + encodeURIComponent(file.name);
   const ref = storage.ref(path);
@@ -710,7 +815,7 @@ async function uploadFile(file,prefix){
   return { url, name: file.name, size: file.size, type: file.type };
 }
 
-/* mark read */
+/* mark read (unchanged) */
 async function markRead(msgKey){
   if(!currentRoom||!msgKey) return;
   const myUid = auth.currentUser ? auth.currentUser.uid : getLocalProfile().uid;
@@ -721,16 +826,22 @@ async function markRead(msgKey){
 
 /* presence & auth */
 auth.onAuthStateChanged(async user=>{
-  if(user){ await ensureProfile(); const presRef = db.ref('presence/'+user.uid); presRef.set({ online:true, ts: now() }); presRef.onDisconnect().remove(); attachInvitationsListener(user.uid); }
-  else { /* nothing */ }
+  if(user){ 
+    await ensureProfile(); 
+    const presRef = db.ref('presence/'+user.uid); 
+    presRef.set({ online:true, ts: now() }); 
+    presRef.onDisconnect().remove(); 
+    loadRooms(); // auth change 시 방 다시 로드
+  }
+  else {
+    await ensureProfile();
+    loadRooms(); // anon mode 시 방 로드
+  }
 });
 
 /* init */
 (async function init(){
-  await ensureProfile(); // Now handles both logged in and anon initial setup via custom modals
-  loadRooms();
-  // keep inviteList cleaned up if no invites
-  document.getElementById('inviteList').innerHTML = '';
+  // init 로직은 authStateChanged 에서 처리되도록 변경
 })();
 </script>
 </body>
