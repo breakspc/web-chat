@@ -4,7 +4,6 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Chat v5 — 단일파일</title>
-<!-- tailwind for quick styles -->
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root{
@@ -52,7 +51,6 @@
 </head>
 <body>
 <div class="app">
-  <!-- LEFT -->
   <div class="card">
     <div style="display:flex;align-items:center;gap:12px;position:relative">
       <img id="profileAvatar" class="avatar" src="https://placehold.co/88" />
@@ -66,8 +64,7 @@
     </div>
 
     <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
-      <button id="openCreateRoom" class="btn-ghost">방 생성</button>
-      <input id="searchRooms" placeholder="검색 (비활성)" style="flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--border)"/>
+      <button id="openCreateRoom" class="btn" style="flex:1">방 생성</button>
     </div>
 
     <div id="roomsList" class="rooms"></div>
@@ -78,7 +75,6 @@
     </div>
   </div>
 
-  <!-- RIGHT: CHAT -->
   <div class="card chat-area">
     <div class="chat-header">
       <div style="display:flex;align-items:center;gap:12px">
@@ -109,11 +105,9 @@
   </div>
 </div>
 
-<!-- invite / modal container -->
 <div id="modals"></div>
 <div id="toastArea" style="position:fixed;right:18px;top:18px;z-index:70"></div>
 
-<!-- Firebase libs -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
@@ -191,6 +185,119 @@ function openModal(html){ // basic modal creation
 }
 function closeModals(){ document.getElementById('modals').innerHTML=''; }
 
+/* Generic Custom Modals */
+function openConfirmModal(title, text){
+  return new Promise(resolve => {
+    const modal = openModal(`<div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-weight:700">${title}</div>
+      <div>${text}</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button id="confirmCancel" class="btn-ghost">취소</button>
+        <button id="confirmOk" class="btn">확인</button>
+      </div>
+    </div>`);
+    modal.querySelector('#confirmCancel').onclick = ()=> { modal.remove(); resolve(false); };
+    modal.querySelector('#confirmOk').onclick = ()=> { modal.remove(); resolve(true); };
+  });
+}
+
+function openEditMessageModal(currentText){
+  return new Promise(resolve => {
+    const modal = openModal(`<div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-weight:700">메시지 수정</div>
+      <textarea id="editMsgText" style="padding:.6rem;border-radius:8px;border:1px solid var(--border);min-height:100px">${currentText}</textarea>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button id="editCancel" class="btn-ghost">취소</button>
+        <button id="editOk" class="btn">수정</button>
+      </div>
+    </div>`);
+    modal.querySelector('#editCancel').onclick = ()=> { modal.remove(); resolve(null); };
+    modal.querySelector('#editOk').onclick = ()=>{
+      const newText = modal.querySelector('#editMsgText').value;
+      modal.remove();
+      resolve(newText);
+    };
+  });
+}
+
+async function openEditRoomNameModal(roomId, currentName){
+  return new Promise(resolve => {
+    const modal = openModal(`<div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-weight:700">방 이름 수정</div>
+      <input id="editRoomName" placeholder="방 이름" value="${currentName}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button id="editCancel" class="btn-ghost">취소</button>
+        <button id="editOk" class="btn">수정</button>
+      </div>
+    </div>`);
+    modal.querySelector('#editCancel').onclick = ()=> { modal.remove(); resolve(); };
+    modal.querySelector('#editOk').onclick = async ()=>{
+      const newName = modal.querySelector('#editRoomName').value.trim();
+      if(!newName) return toast('이름을 입력하세요');
+      await db.ref('rooms/'+roomId).update({ name:newName });
+      modal.remove();
+      resolve();
+    };
+  });
+}
+
+/* Custom Modals for Initial Setup */
+async function openInitialProfileSetup(user){
+  return new Promise(resolve => {
+    const defaultTag = (user.email?user.email.split('@')[0]:'user');
+    const html = `<div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-weight:700">프로필 설정 (최초 1회)</div>
+      <input id="initName" placeholder="표시명 (닉네임)" value="${user.displayName||''}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
+      <input id="initTag" placeholder="고유 태그 (소문자/숫자/_)" value="${defaultTag}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
+      <div style="color:red;font-size:12px;text-align:center" id="tagError"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button id="initOk" class="btn">시작하기</button>
+      </div>
+    </div>`;
+    const m = openModal(html);
+    m.querySelector('#initOk').onclick = async ()=>{
+      const name = m.querySelector('#initName').value.trim();
+      let tag = m.querySelector('#initTag').value.trim().toLowerCase().replace(/\s+/g,'');
+      if(!name) return toast('닉네임 입력');
+      if(!tag) return toast('태그 입력');
+      
+      const tagRef = db.ref('tags/'+tag);
+      const res = await tagRef.transaction(curr=>{ if(curr==null) return user.uid; return; }, undefined, false);
+      if(!res.committed) {
+         m.querySelector('#tagError').textContent = '이미 사용 중인 태그입니다. 다른 태그를 입력하세요.';
+         return;
+      }
+      await db.ref('users/'+user.uid).set({ uid:user.uid, name, tag, photoURL:user.photoURL||'' });
+      displayNameEl.textContent = name; displayTagEl.textContent = '#'+tag;
+      if(user.photoURL) profileAvatar.src = user.photoURL;
+      m.remove();
+      resolve();
+    };
+  });
+}
+async function openInitialAnonProfileSetup(){
+  return new Promise(resolve => {
+    const defaultTag = 'guest'+Math.floor(Math.random()*9000);
+    const html = `<div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-weight:700">비회원 프로필 설정</div>
+      <input id="initName" placeholder="표시명 (닉네임)" value="손님" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
+      <input id="initTag" placeholder="고유 태그 (소문자/숫자/_)" value="${defaultTag}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button id="initOk" class="btn">시작하기</button>
+      </div>
+    </div>`;
+    const m = openModal(html);
+    m.querySelector('#initOk').onclick = ()=>{
+      const name = m.querySelector('#initName').value.trim();
+      const tag = m.querySelector('#initTag').value.trim().toLowerCase().replace(/\s+/g,'');
+      const uidv = 'anon_'+Math.random().toString(36).slice(2,8);
+      setLocalProfile({ uid:uidv, name, tag, photoURL:'' });
+      m.remove();
+      resolve();
+    };
+  });
+}
+
 /* Profile modal: edit name/tag, login/logout */
 function openProfileModal(){
   const local = getLocalProfile();
@@ -198,41 +305,71 @@ function openProfileModal(){
   const html = `
     <div style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;gap:10px;align-items:center">
-        <img src="${local.photoURL || profileAvatar.src}" style="width:56px;height:56px;border-radius:999px"/>
+        <img id="modalProfileImg" src="${local.photoURL || profileAvatar.src}" style="width:56px;height:56px;border-radius:999px"/>
         <div>
-          <div style="font-weight:700">${local.name || '비회원'}</div>
-          <div class="text-sm text-gray-500">#${local.tag || '—'}</div>
+          <div style="font-weight:700" id="modalProfileName">${local.name || '비회원'}</div>
+          <div class="text-sm text-gray-500" id="modalProfileTag">#${local.tag || '—'}</div>
         </div>
       </div>
       <div style="display:flex;gap:8px">
-        <button id="modalEditProfile" class="btn-ghost">닉네임/태그 변경</button>
-        <button id="modalUploadAvatar" class="btn-ghost">프로필 사진 업로드</button>
-        <button id="modalAuthBtn" class="btn">${logged? '로그아웃':'로그인(구글)'}</button>
+        <button id="modalEditProfile" class="btn-ghost" style="flex:1">닉네임/태그 변경</button>
+        <button id="modalUploadAvatar" class="btn-ghost" style="flex:1">프로필 사진 업로드</button>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button id="modalClose" class="btn-ghost">닫기</button>
+        <button id="modalAuthBtn" class="btn-ghost" style="flex:1">${logged? '로그아웃':'로그인(구글)'}</button>
+        <button id="modalClose" class="btn-ghost" style="flex:1">닫기</button>
       </div>
     </div>`;
   const m = openModal(html);
   m.querySelector('#modalClose').onclick = ()=> m.remove();
+  
+  // Custom modal for name/tag edit
   m.querySelector('#modalEditProfile').onclick = async ()=>{
-    const name = prompt('표시명', local.name||'') || local.name;
-    let tag = prompt('고유 태그 (소문자/숫자/_)', local.tag||('guest'+Math.floor(Math.random()*9000))) || local.tag;
-    tag = tag.toLowerCase().replace(/\s+/g,'');
-    if(!tag) return alert('유효하지 않은 태그');
-    // try claim tag if logged in
-    if(auth.currentUser){
-      const tagRef = db.ref('tags/'+tag);
-      const res = await tagRef.transaction(curr=>{ if(curr==null) return auth.currentUser.uid; return; }, undefined, false);
-      if(!res.committed) return alert('이미 있는 태그');
-      await db.ref('users/'+auth.currentUser.uid).update({ name, tag });
-    } else {
-      local.name = name; local.tag = tag; setLocalProfile(local);
-    }
-    displayNameEl.textContent = name; displayTagEl.textContent = '#'+tag;
-    m.remove();
-    toast('프로필 업데이트됨');
+    m.remove(); // Close main profile modal first
+    const editHtml = `<div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-weight:700">닉네임/태그 변경</div>
+        <input id="editName" placeholder="표시명 (닉네임)" value="${local.name||''}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
+        <input id="editTag" placeholder="고유 태그 (소문자/숫자/_)" value="${local.tag||''}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
+        <div style="color:red;font-size:12px;text-align:center" id="tagError"></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button id="editCancel" class="btn-ghost">취소</button>
+          <button id="editOk" class="btn">변경</button>
+        </div>
+      </div>`;
+    const editModal = openModal(editHtml);
+    editModal.querySelector('#editCancel').onclick = ()=> editModal.remove();
+    editModal.querySelector('#editOk').onclick = async ()=>{
+      const newName = editModal.querySelector('#editName').value.trim();
+      let newTag = editModal.querySelector('#editTag').value.trim().toLowerCase().replace(/\s+/g,'');
+
+      if(!newName) return toast('닉네임을 입력하세요');
+      if(!newTag) return toast('유효한 태그를 입력하세요');
+      
+      try {
+        if(auth.currentUser){
+          const tagRef = db.ref('tags/'+newTag);
+          const res = await tagRef.transaction(curr=>{
+            if(curr!=null && curr!==auth.currentUser.uid) return;
+            return auth.currentUser.uid; 
+          }, undefined, false);
+
+          if(!res.committed && res.snapshot.val()!==auth.currentUser.uid) { 
+             editModal.querySelector('#tagError').textContent = '이미 사용 중인 태그입니다. 다른 태그를 입력하세요.';
+             return;
+          }
+          await db.ref('users/'+auth.currentUser.uid).update({ name:newName, tag:newTag });
+        } else {
+          local.name = newName; local.tag = newTag; setLocalProfile(local);
+        }
+        displayNameEl.textContent = newName; displayTagEl.textContent = '#'+newTag;
+        editModal.remove();
+        toast('프로필 업데이트됨');
+      } catch(e) {
+        toast('업데이트 오류: '+e.message);
+      }
+    };
   };
+
   m.querySelector('#modalUploadAvatar').onclick = ()=>{
     const inp = document.createElement('input'); inp.type='file'; inp.accept='image/*';
     inp.onchange = async e=>{
@@ -240,10 +377,15 @@ function openProfileModal(){
       const ref = storage.ref('profiles/'+Date.now()+'_'+f.name);
       const snap = await ref.put(f);
       const url = await snap.ref.getDownloadURL();
-      if(auth.currentUser){ await auth.currentUser.updateProfile({photoURL:url}); await db.ref('users/'+auth.currentUser.uid).update({photoURL:url}); profileAvatar.src=url; }
-      else{ local.photoURL = url; setLocalProfile(local); profileAvatar.src=url; }
+      if(auth.currentUser){ 
+        await auth.currentUser.updateProfile({photoURL:url}); 
+        await db.ref('users/'+auth.currentUser.uid).update({photoURL:url}); 
+      } else { 
+        local.photoURL = url; setLocalProfile(local); 
+      }
+      profileAvatar.src=url;
+      m.querySelector('#modalProfileImg').src=url;
       toast('프로필 사진 업로드됨');
-      m.remove();
     };
     inp.click();
   };
@@ -252,12 +394,17 @@ function openProfileModal(){
       const uid = auth.currentUser.uid;
       await auth.signOut();
       await db.ref('presence/'+uid).remove().catch(()=>{});
-      // local reset
       localStorage.removeItem('local_profile');
       location.reload();
     } else {
       const provider = new firebase.auth.GoogleAuthProvider();
-      try{ await auth.signInWithPopup(provider); await ensureProfile(); m.remove(); }catch(e){ alert(e.message) }
+      try{ 
+        await auth.signInWithPopup(provider); 
+        await ensureProfile(); 
+        m.remove(); 
+      }catch(e){ 
+        toast(e.message) 
+      }
     }
   };
 }
@@ -268,14 +415,7 @@ async function ensureProfile(){
     const u = auth.currentUser;
     const snap = await db.ref('users/'+u.uid).once('value'); const profile = snap.val() || {};
     if(!profile.tag || !profile.name){
-      const name = prompt('표시명 (닉네임)', u.displayName||'') || u.displayName||'사용자';
-      let tag = prompt('고유 태그 (소문자/숫자/_)', (u.email?u.email.split('@')[0]:'user')) || '';
-      tag = tag.toLowerCase().replace(/\s+/g,'');
-      const tagRef = db.ref('tags/'+tag);
-      const res = await tagRef.transaction(curr=>{ if(curr==null) return u.uid; return; }, undefined, false);
-      if(!res.committed) return alert('태그 중복');
-      await db.ref('users/'+u.uid).set({ uid:u.uid, name, tag, photoURL:u.photoURL||'' });
-      displayNameEl.textContent = name; displayTagEl.textContent = '#'+tag;
+      await openInitialProfileSetup(u); // Use custom modal for first time setup
     } else {
       displayNameEl.textContent = profile.name; displayTagEl.textContent = '#'+profile.tag;
       if(profile.photoURL) profileAvatar.src = profile.photoURL;
@@ -287,10 +427,7 @@ async function ensureProfile(){
     attachInvitationsListener(u.uid);
   } else {
     if(!localStorage.getItem('local_profile')){
-      const name = prompt('비회원 닉네임', '손님') || '손님';
-      const tag = prompt('비회원 태그', 'guest'+Math.floor(Math.random()*9000)) || ('guest'+Math.floor(Math.random()*9000));
-      const uidv = 'anon_'+Math.random().toString(36).slice(2,8);
-      setLocalProfile({ uid:uidv, name, tag, photoURL:'' });
+      await openInitialAnonProfileSetup(); // Use custom modal for anon setup
     }
     const p = getLocalProfile();
     displayNameEl.textContent = p.name; displayTagEl.textContent = '#'+p.tag; if(p.photoURL) profileAvatar.src = p.photoURL;
@@ -310,7 +447,8 @@ function openCreateRoomModal(){
   </div>`);
   modal.querySelector('#createCancel').onclick = ()=> modal.remove();
   modal.querySelector('#createOk').onclick = async ()=>{
-    const name = modal.querySelector('#newRoomName').value.trim(); if(!name) return alert('이름 입력');
+    const name = modal.querySelector('#newRoomName').value.trim(); 
+    if(!name) return toast('방 이름을 입력하세요'); // Custom modal, using toast for validation error
     const rid = 'r_'+Math.random().toString(36).slice(2,8);
     const me = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
     await db.ref('rooms/'+rid).set({ id:rid, name, createdAt: now(), owner:me, members: { [me]: true } });
@@ -333,7 +471,11 @@ async function loadRooms(){
     const inviteBtn = document.createElement('button'); inviteBtn.className='btn-ghost'; inviteBtn.textContent='초대';
     inviteBtn.onclick = (e)=>{ e.stopPropagation(); openInviteModal(id); };
     const pencil = document.createElement('button'); pencil.className='btn-ghost'; pencil.textContent='✏️';
-    pencil.onclick = async (e)=>{ e.stopPropagation(); const newName = prompt('방 이름 수정', r.name); if(newName) await db.ref('rooms/'+id).update({ name:newName }); loadRooms(); };
+    pencil.onclick = async (e)=>{ 
+      e.stopPropagation(); 
+      await openEditRoomNameModal(id, r.name); // Using custom modal
+      loadRooms(); 
+    };
     actions.appendChild(inviteBtn); actions.appendChild(pencil);
     el.appendChild(actions);
     el.addEventListener('click', ()=> selectRoom(id));
@@ -374,8 +516,10 @@ function openInviteModal(roomId){
   </div>`);
   modal.querySelector('#inviteCancel').onclick = ()=> modal.remove();
   modal.querySelector('#inviteSend').onclick = async ()=>{
-    const tag = modal.querySelector('#inviteTag').value.trim().toLowerCase(); if(!tag) return alert('태그 입력');
-    const tSnap = await db.ref('tags/'+tag).once('value'); if(!tSnap.exists()) return alert('해당 태그 없음');
+    const tag = modal.querySelector('#inviteTag').value.trim().toLowerCase(); 
+    if(!tag) return toast('태그를 입력하세요'); // Custom modal, using toast for validation error
+    const tSnap = await db.ref('tags/'+tag).once('value'); 
+    if(!tSnap.exists()) return toast('해당 태그를 가진 사용자가 없습니다.'); // Custom modal, using toast for validation error
     const targetUid = tSnap.val();
     await db.ref('invitations/'+targetUid).push({ room: roomId, from: auth.currentUser?auth.currentUser.uid:getLocalProfile().uid, ts: now() });
     modal.remove(); toast('초대 발송됨');
@@ -383,6 +527,18 @@ function openInviteModal(roomId){
 }
 
 /* ---------- select room & messages ---------- */
+leaveRoomBtn.onclick = async ()=>{
+  if(await openConfirmModal('방 나가기', '정말로 이 방을 나가시겠습니까?')) {
+    const myUid = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
+    await db.ref('rooms/'+currentRoom+'/members/'+myUid).remove();
+    // clear chat area and load rooms
+    currentRoom = null; roomTitle.textContent = '— 방 선택 —'; leaveRoomBtn.style.display='none';
+    chatBody.innerHTML = '';
+    loadRooms();
+    toast('방에서 나왔습니다.');
+  }
+};
+
 async function selectRoom(roomId){
   if(messagesRef && messageListener) messagesRef.off('child_added', messageListener);
   currentRoom = roomId; chatBody.innerHTML=''; roomTitle.textContent='로딩...'; roomInfo.textContent='';
@@ -435,9 +591,16 @@ function insertMessage(m){
     // edit/delete for own
     if(isMe){
       const edit = document.createElement('button'); edit.className='icon-btn'; edit.textContent='✏'; edit.title='수정';
-      edit.onclick = async ()=>{ const t = prompt('수정', m.text||''); if(t===null) return; await db.ref('rooms/'+currentRoom+'/messages/'+m.key).update({ text:t, edited:true }); };
+      edit.onclick = async ()=>{ 
+        const newText = await openEditMessageModal(m.text||''); // Using custom modal
+        if(newText!==null) await db.ref('rooms/'+currentRoom+'/messages/'+m.key).update({ text:newText, edited:true }); 
+      };
       const del = document.createElement('button'); del.className='icon-btn delete'; del.textContent='🗑'; del.title='삭제';
-      del.onclick = async ()=>{ if(!confirm('정말 삭제?')) return; await db.ref('rooms/'+currentRoom+'/messages/'+m.key).remove(); };
+      del.onclick = async ()=>{ 
+        if(await openConfirmModal('메시지 삭제','정말로 이 메시지를 삭제하시겠습니까?')) { // Using custom modal
+          await db.ref('rooms/'+currentRoom+'/messages/'+m.key).remove(); 
+        }
+      };
       actions.appendChild(edit); actions.appendChild(del);
     }
     container.appendChild(meta); container.appendChild(stack); container.appendChild(actions);
@@ -564,13 +727,7 @@ auth.onAuthStateChanged(async user=>{
 
 /* init */
 (async function init(){
-  if(!localStorage.getItem('local_profile')){
-    const name = prompt('비회원 닉네임', '손님') || '손님';
-    const tag = prompt('비회원 태그', 'guest'+Math.floor(Math.random()*9000)) || ('guest'+Math.floor(Math.random()*9000));
-    const uidv = 'anon_'+Math.random().toString(36).slice(2,8);
-    setLocalProfile({ uid:uidv, name, tag, photoURL:'' });
-  }
-  await ensureProfile();
+  await ensureProfile(); // Now handles both logged in and anon initial setup via custom modals
   loadRooms();
   // keep inviteList cleaned up if no invites
   document.getElementById('inviteList').innerHTML = '';
