@@ -1,26 +1,580 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat App</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Chat v5 — 단일파일</title>
+<!-- tailwind for quick styles -->
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{
+    --bg:#f4f7fb; --card:#fff; --accent:#2563eb; --muted:#6b7280; --border:rgba(15,23,42,0.06);
+    --mention-bg:#fff7cc; --reply-bg:#ecfdf5;
+  }
+  html.dark{--bg:#061022;--card:#0b1220;--accent:#3b82f6;--muted:#9aa3b2;--border:rgba(255,255,255,0.06);--mention-bg:#2b2a0f;--reply-bg:#063b1f}
+  body{background:var(--bg);font-family:Inter,system-ui,'Noto Sans KR',sans-serif;color:inherit;margin:0;padding:18px}
+  .app{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:320px 1fr;gap:18px}
+  .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 8px 24px rgba(2,6,23,0.06);border:1px solid var(--border)}
+  .avatar{width:44px;height:44px;border-radius:999px;object-fit:cover;border:1px solid var(--border);cursor:pointer}
+  .btn{background:var(--accent);color:white;padding:.5rem .8rem;border-radius:10px;border:0;cursor:pointer}
+  .btn-ghost{background:transparent;border:1px solid var(--border);padding:.4rem .6rem;border-radius:10px;cursor:pointer}
+  .rooms{display:flex;flex-direction:column;gap:8px;margin-top:12px;max-height:64vh;overflow:auto;padding-right:8px}
+  .room-item{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;cursor:pointer;transition:background .12s}
+  .room-item:hover{background:rgba(0,0,0,0.03)}
+  .chat-area{display:flex;flex-direction:column;height:80vh}
+  .chat-header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .chat-body{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:8px;background:var(--card);border-radius:10px;border:1px solid var(--border)}
+  /* message */
+  .msg-block{display:flex;gap:10px;align-items:flex-start}
+  .msg-block.own{flex-direction:row-reverse}
+  .avatar-col{width:44px}
+  .bubble{display:inline-block;padding:10px;border-radius:12px;min-width:90px;max-width:68%;word-break:break-word;white-space:pre-wrap;border:1px solid var(--border);background:var(--card)}
+  .bubble.own{background:linear-gradient(90deg,#f0f7ff,#fbfdff);border-color:rgba(37,99,235,0.12)}
+  .meta-line{font-size:12px;color:var(--muted);margin-bottom:6px;display:flex;gap:8px;align-items:center}
+  .controls{opacity:0;transition:opacity .12s;display:flex;gap:6px;align-items:center}
+  .msg-block:hover .controls{opacity:1}
+  .icon-btn{background:transparent;border:0;cursor:pointer;padding:6px;border-radius:8px;color:inherit}
+  .icon-btn.delete:hover{color:#ef4444}
+  .mention-inline{background:transparent;color:#6b4b00;font-weight:700;padding:2px 6px;border-radius:6px}
+  .mention-highlight{background:var(--mention-bg);border-radius:8px;padding:6px}
+  .reply-small{background:var(--reply-bg);border-radius:6px;padding:6px;margin-bottom:8px;color:inherit}
+  /* reply preview above input */
+  .reply-preview{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--reply-bg)}
+  /* invite list left bottom */
+  .invite-list{margin-top:12px;border-top:1px dashed var(--border);padding-top:8px}
+  .invite-item{display:flex;justify-content:space-between;padding:6px;border-radius:8px;background:rgba(0,0,0,0.02);align-items:center;margin-bottom:6px}
+  /* modal */
+  .modal-backdrop{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:60}
+  .modal{background:var(--card);padding:16px;border-radius:12px;border:1px solid var(--border);width:420px}
+  /* small responsive */
+  @media(max-width:920px){ .app{grid-template-columns:1fr} .rooms{display:none} }
+</style>
 </head>
 <body>
-  <div id="app">
-    <header>
-      <h1>Chat App</h1>
-    </header>
-    <main>
-      <div id="chat-window"></div>
-      <div id="reply-box" style="display:none;">
-        <span id="reply-text"></span>
-        <button onclick="closeReply()">x</button>
+<div class="app">
+  <!-- LEFT -->
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:12px;position:relative">
+      <img id="profileAvatar" class="avatar" src="https://placehold.co/88" />
+      <div>
+        <div id="displayName" style="font-weight:600">비회원</div>
+        <div id="displayTag" class="text-sm text-gray-500">#—</div>
       </div>
-      <input id="message-input" placeholder="메시지를 입력하세요" />
-      <button onclick="sendMessage()">보내기</button>
-    </main>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <button id="darkToggle" class="btn-ghost">🌙</button>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+      <button id="openCreateRoom" class="btn-ghost">방 생성</button>
+      <input id="searchRooms" placeholder="검색 (비활성)" style="flex:1;padding:.5rem;border-radius:8px;border:1px solid var(--border)"/>
+    </div>
+
+    <div id="roomsList" class="rooms"></div>
+
+    <div class="invite-list" id="inviteListWrap">
+      <div class="text-sm text-gray-500 mb-2">초대 알림</div>
+      <div id="inviteList"></div>
+    </div>
   </div>
-  <script src="script.js"></script>
+
+  <!-- RIGHT: CHAT -->
+  <div class="card chat-area">
+    <div class="chat-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div>
+          <div id="roomTitle" style="font-weight:700">— 방 선택 —</div>
+          <div id="roomInfo" class="text-sm text-gray-500"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div id="roomMembers" class="text-sm text-gray-500"></div>
+        <button id="leaveRoom" class="btn-ghost" style="display:none">방 나가기</button>
+      </div>
+    </div>
+
+    <div id="chatBody" class="chat-body"></div>
+
+    <div id="replyPreview" class="reply-preview" style="display:none;margin-top:10px">
+      <div><strong>답장</strong> <span id="replyText" class="text-sm"></span></div>
+      <div><button id="cancelReply" class="btn-ghost">취소</button></div>
+    </div>
+
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+      <input id="msgInput" placeholder="메시지 입력. @태그로 멘션" style="flex:1;padding:.6rem;border-radius:10px;border:1px solid var(--border)"/>
+      <input id="fileInput" type="file" style="display:none" />
+      <button id="attachBtn" class="btn-ghost">📎</button>
+      <button id="sendBtn" class="btn">전송</button>
+    </div>
+  </div>
+</div>
+
+<!-- invite / modal container -->
+<div id="modals"></div>
+<div id="toastArea" style="position:fixed;right:18px;top:18px;z-index:70"></div>
+
+<!-- Firebase libs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+/* ========== CONFIG ========== */
+// 네가 준 config 그대로 넣음
+const firebaseConfig = {
+  apiKey: "AIzaSyA67fYuBMY3vDQ5DpC5VXnzC1tkw7oBZfQ",
+  authDomain: "chat-29b71.firebaseapp.com",
+  databaseURL: "https://chat-29b71-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "chat-29b71",
+  storageBucket: "chat-29b71.appspot.com",
+  messagingSenderId: "838945499737",
+  appId: "1:838945499737:web:bc4d105d8189837c4e9f48",
+  measurementId: "G-WW5Q1HPS8P"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+const storage = firebase.storage();
+/* ============================ */
+
+const profileAvatar = document.getElementById('profileAvatar');
+const displayNameEl = document.getElementById('displayName');
+const displayTagEl = document.getElementById('displayTag');
+const darkToggle = document.getElementById('darkToggle');
+const roomsList = document.getElementById('roomsList');
+const openCreateRoom = document.getElementById('openCreateRoom');
+const inviteList = document.getElementById('inviteList');
+const chatBody = document.getElementById('chatBody');
+const msgInput = document.getElementById('msgInput');
+const sendBtn = document.getElementById('sendBtn');
+const attachBtn = document.getElementById('attachBtn');
+const fileInput = document.getElementById('fileInput');
+const replyPreview = document.getElementById('replyPreview');
+const replyText = document.getElementById('replyText');
+const cancelReply = document.getElementById('cancelReply');
+const leaveRoomBtn = document.getElementById('leaveRoom');
+const roomTitle = document.getElementById('roomTitle');
+const roomInfo = document.getElementById('roomInfo');
+const roomMembers = document.getElementById('roomMembers');
+
+let currentRoom = null;
+let messagesRef = null;
+let messageListener = null;
+let selectedFile = null;
+let replyTo = null;
+let lastAuthor = null;
+const MSG_LIMIT = 1000;
+
+// helper
+const now = ()=>Date.now();
+function uid(){ return 'u'+Math.random().toString(36).slice(2,9) }
+function escapeHtml(s){ if(!s) return ''; return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function toast(msg, t=2800){ const n=document.createElement('div'); n.className='card'; n.style.marginBottom='8px'; n.textContent=msg; document.getElementById('toastArea').appendChild(n); setTimeout(()=>{ n.remove() }, t); }
+function getLocalProfile(){ return JSON.parse(localStorage.getItem('local_profile')||'{}'); }
+function setLocalProfile(p){ localStorage.setItem('local_profile', JSON.stringify(p)); }
+
+/* ---------- UI behavior ---------- */
+darkToggle.addEventListener('click', ()=>{ document.documentElement.classList.toggle('dark'); darkToggle.textContent = document.documentElement.classList.contains('dark') ? '☀️' : '🌙'; });
+
+// profile click -> modal (persistent)
+profileAvatar.addEventListener('click', ()=> openProfileModal() );
+
+/* ---------- Modals ---------- */
+function openModal(html){ // basic modal creation
+  const m = document.createElement('div'); m.className='modal-backdrop';
+  m.innerHTML = `<div class="modal">${html}</div>`;
+  m.onclick = (e)=>{ if(e.target===m) m.remove(); };
+  document.getElementById('modals').appendChild(m);
+  return m;
+}
+function closeModals(){ document.getElementById('modals').innerHTML=''; }
+
+/* Profile modal: edit name/tag, login/logout */
+function openProfileModal(){
+  const local = getLocalProfile();
+  const logged = !!auth.currentUser;
+  const html = `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <img src="${local.photoURL || profileAvatar.src}" style="width:56px;height:56px;border-radius:999px"/>
+        <div>
+          <div style="font-weight:700">${local.name || '비회원'}</div>
+          <div class="text-sm text-gray-500">#${local.tag || '—'}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button id="modalEditProfile" class="btn-ghost">닉네임/태그 변경</button>
+        <button id="modalUploadAvatar" class="btn-ghost">프로필 사진 업로드</button>
+        <button id="modalAuthBtn" class="btn">${logged? '로그아웃':'로그인(구글)'}</button>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button id="modalClose" class="btn-ghost">닫기</button>
+      </div>
+    </div>`;
+  const m = openModal(html);
+  m.querySelector('#modalClose').onclick = ()=> m.remove();
+  m.querySelector('#modalEditProfile').onclick = async ()=>{
+    const name = prompt('표시명', local.name||'') || local.name;
+    let tag = prompt('고유 태그 (소문자/숫자/_)', local.tag||('guest'+Math.floor(Math.random()*9000))) || local.tag;
+    tag = tag.toLowerCase().replace(/\s+/g,'');
+    if(!tag) return alert('유효하지 않은 태그');
+    // try claim tag if logged in
+    if(auth.currentUser){
+      const tagRef = db.ref('tags/'+tag);
+      const res = await tagRef.transaction(curr=>{ if(curr==null) return auth.currentUser.uid; return; }, undefined, false);
+      if(!res.committed) return alert('이미 있는 태그');
+      await db.ref('users/'+auth.currentUser.uid).update({ name, tag });
+    } else {
+      local.name = name; local.tag = tag; setLocalProfile(local);
+    }
+    displayNameEl.textContent = name; displayTagEl.textContent = '#'+tag;
+    m.remove();
+    toast('프로필 업데이트됨');
+  };
+  m.querySelector('#modalUploadAvatar').onclick = ()=>{
+    const inp = document.createElement('input'); inp.type='file'; inp.accept='image/*';
+    inp.onchange = async e=>{
+      const f = e.target.files[0]; if(!f) return;
+      const ref = storage.ref('profiles/'+Date.now()+'_'+f.name);
+      const snap = await ref.put(f);
+      const url = await snap.ref.getDownloadURL();
+      if(auth.currentUser){ await auth.currentUser.updateProfile({photoURL:url}); await db.ref('users/'+auth.currentUser.uid).update({photoURL:url}); profileAvatar.src=url; }
+      else{ local.photoURL = url; setLocalProfile(local); profileAvatar.src=url; }
+      toast('프로필 사진 업로드됨');
+      m.remove();
+    };
+    inp.click();
+  };
+  m.querySelector('#modalAuthBtn').onclick = async ()=>{
+    if(auth.currentUser){ // logout
+      const uid = auth.currentUser.uid;
+      await auth.signOut();
+      await db.ref('presence/'+uid).remove().catch(()=>{});
+      // local reset
+      localStorage.removeItem('local_profile');
+      location.reload();
+    } else {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try{ await auth.signInWithPopup(provider); await ensureProfile(); m.remove(); }catch(e){ alert(e.message) }
+    }
+  };
+}
+
+/* ---------- ensure profile & presence ---------- */
+async function ensureProfile(){
+  if(auth.currentUser){
+    const u = auth.currentUser;
+    const snap = await db.ref('users/'+u.uid).once('value'); const profile = snap.val() || {};
+    if(!profile.tag || !profile.name){
+      const name = prompt('표시명 (닉네임)', u.displayName||'') || u.displayName||'사용자';
+      let tag = prompt('고유 태그 (소문자/숫자/_)', (u.email?u.email.split('@')[0]:'user')) || '';
+      tag = tag.toLowerCase().replace(/\s+/g,'');
+      const tagRef = db.ref('tags/'+tag);
+      const res = await tagRef.transaction(curr=>{ if(curr==null) return u.uid; return; }, undefined, false);
+      if(!res.committed) return alert('태그 중복');
+      await db.ref('users/'+u.uid).set({ uid:u.uid, name, tag, photoURL:u.photoURL||'' });
+      displayNameEl.textContent = name; displayTagEl.textContent = '#'+tag;
+    } else {
+      displayNameEl.textContent = profile.name; displayTagEl.textContent = '#'+profile.tag;
+      if(profile.photoURL) profileAvatar.src = profile.photoURL;
+    }
+    // presence
+    const presRef = db.ref('presence/'+u.uid);
+    presRef.set({ online:true, ts: now() });
+    presRef.onDisconnect().remove();
+    attachInvitationsListener(u.uid);
+  } else {
+    if(!localStorage.getItem('local_profile')){
+      const name = prompt('비회원 닉네임', '손님') || '손님';
+      const tag = prompt('비회원 태그', 'guest'+Math.floor(Math.random()*9000)) || ('guest'+Math.floor(Math.random()*9000));
+      const uidv = 'anon_'+Math.random().toString(36).slice(2,8);
+      setLocalProfile({ uid:uidv, name, tag, photoURL:'' });
+    }
+    const p = getLocalProfile();
+    displayNameEl.textContent = p.name; displayTagEl.textContent = '#'+p.tag; if(p.photoURL) profileAvatar.src = p.photoURL;
+  }
+}
+
+/* ---------- rooms ---------- */
+openCreateRoom.addEventListener('click', ()=> openCreateRoomModal() );
+function openCreateRoomModal(){
+  const modal = openModal(`<div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-weight:700">방 생성</div>
+    <input id="newRoomName" placeholder="방 이름" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button id="createCancel" class="btn-ghost">취소</button>
+      <button id="createOk" class="btn">생성</button>
+    </div>
+  </div>`);
+  modal.querySelector('#createCancel').onclick = ()=> modal.remove();
+  modal.querySelector('#createOk').onclick = async ()=>{
+    const name = modal.querySelector('#newRoomName').value.trim(); if(!name) return alert('이름 입력');
+    const rid = 'r_'+Math.random().toString(36).slice(2,8);
+    const me = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
+    await db.ref('rooms/'+rid).set({ id:rid, name, createdAt: now(), owner:me, members: { [me]: true } });
+    modal.remove(); loadRooms();
+  };
+}
+
+async function loadRooms(){
+  const snap = await db.ref('rooms').once('value'); const data = snap.val()||{};
+  roomsList.innerHTML='';
+  const myUid = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
+  Object.keys(data).sort((a,b)=> (data[a].createdAt||0)-(data[b].createdAt||0)).forEach(id=>{
+    const r = data[id];
+    if(r.members && !r.members[myUid]) return; // only if member
+    const el = document.createElement('div'); el.className='room-item'; el.dataset.id=id;
+    const thumb = r.thumb || 'https://placehold.co/36';
+    el.innerHTML = `<img class="avatar" src="${thumb}" /><div style="flex:1"><div style="font-weight:600">${r.name}</div><div class="text-sm text-gray-500">${r.lastMessage?escapeHtml(r.lastMessage.slice(0,48)):'설명 없음'}</div></div>`;
+    // actions: invite (open modal) and edit (pencil)
+    const actions = document.createElement('div'); actions.style.marginLeft='8px';
+    const inviteBtn = document.createElement('button'); inviteBtn.className='btn-ghost'; inviteBtn.textContent='초대';
+    inviteBtn.onclick = (e)=>{ e.stopPropagation(); openInviteModal(id); };
+    const pencil = document.createElement('button'); pencil.className='btn-ghost'; pencil.textContent='✏️';
+    pencil.onclick = async (e)=>{ e.stopPropagation(); const newName = prompt('방 이름 수정', r.name); if(newName) await db.ref('rooms/'+id).update({ name:newName }); loadRooms(); };
+    actions.appendChild(inviteBtn); actions.appendChild(pencil);
+    el.appendChild(actions);
+    el.addEventListener('click', ()=> selectRoom(id));
+    roomsList.appendChild(el);
+  });
+}
+
+/* ---------- invitations: left-bottom list (persistent) ---------- */
+function attachInvitationsListener(uid){
+  const ref = db.ref('invitations/'+uid);
+  // child_added -> show in left inviteList
+  ref.on('child_added', snap=>{
+    const key=snap.key; const val=snap.val();
+    const node = document.createElement('div'); node.className='invite-item'; node.id='inv_'+key;
+    node.innerHTML = `<div>방 초대: ${val.room}</div>`;
+    const area = document.createElement('div');
+    const acc = document.createElement('button'); acc.className='btn'; acc.textContent='수락';
+    acc.onclick = async ()=>{ await db.ref('rooms/'+val.room+'/members/'+uid).set(true); await db.ref('invitations/'+uid+'/'+key).remove(); node.remove(); loadRooms(); toast('수락됨'); };
+    const dec = document.createElement('button'); dec.className='btn-ghost'; dec.textContent='거절';
+    dec.onclick = async ()=>{ await db.ref('invitations/'+uid+'/'+key).remove(); node.remove(); };
+    area.appendChild(acc); area.appendChild(dec);
+    node.appendChild(area);
+    inviteList.prepend(node);
+  });
+  // removed
+  ref.on('child_removed', snap=>{ const el=document.getElementById('inv_'+snap.key); if(el) el.remove(); });
+}
+
+/* ---------- invite modal (send) ---------- */
+function openInviteModal(roomId){
+  const modal = openModal(`<div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-weight:700">초대 보내기</div>
+    <input id="inviteTag" placeholder="상대 태그 입력 (예: zzapcho)" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button id="inviteCancel" class="btn-ghost">취소</button>
+      <button id="inviteSend" class="btn">보내기</button>
+    </div>
+  </div>`);
+  modal.querySelector('#inviteCancel').onclick = ()=> modal.remove();
+  modal.querySelector('#inviteSend').onclick = async ()=>{
+    const tag = modal.querySelector('#inviteTag').value.trim().toLowerCase(); if(!tag) return alert('태그 입력');
+    const tSnap = await db.ref('tags/'+tag).once('value'); if(!tSnap.exists()) return alert('해당 태그 없음');
+    const targetUid = tSnap.val();
+    await db.ref('invitations/'+targetUid).push({ room: roomId, from: auth.currentUser?auth.currentUser.uid:getLocalProfile().uid, ts: now() });
+    modal.remove(); toast('초대 발송됨');
+  };
+}
+
+/* ---------- select room & messages ---------- */
+async function selectRoom(roomId){
+  if(messagesRef && messageListener) messagesRef.off('child_added', messageListener);
+  currentRoom = roomId; chatBody.innerHTML=''; roomTitle.textContent='로딩...'; roomInfo.textContent='';
+  const rs = await db.ref('rooms/'+roomId).once('value'); const meta = rs.val()||{};
+  roomTitle.textContent = meta.name || '방'; roomInfo.textContent = '';
+  leaveRoomBtn.style.display='inline-block';
+  messagesRef = db.ref('rooms/'+roomId+'/messages');
+  messageListener = messagesRef.limitToLast(MSG_LIMIT).on('child_added', snap=>{
+    const m = Object.assign({key:snap.key}, snap.val());
+    insertMessage(m);
+  });
+  messagesRef.on('child_changed', snap=>{ const m=Object.assign({key:snap.key}, snap.val()); updateMessageInUI(m); });
+  messagesRef.on('child_removed', snap=>{ removeMessageFromUI(snap.key); });
+}
+
+/* message grouping & render */
+function insertMessage(m){
+  // group consecutive messages by same author into one msg-block
+  const lastBlock = chatBody.lastElementChild;
+  const local = getLocalProfile();
+  const myUid = auth.currentUser?auth.currentUser.uid:local.uid;
+  const isMe = (m.uid && myUid && m.uid===myUid) || (!m.uid && m.author===local.name);
+  if(lastBlock && lastBlock.dataset && lastBlock.dataset.author === (m.uid||m.author) && (m.ts - Number(lastBlock.dataset.lastTs) < 5*60*1000)){
+    // append bubble to lastBlock stack
+    const stack = lastBlock.querySelector('.messages-stack');
+    appendBubble(stack, m, isMe);
+    lastBlock.dataset.lastTs = m.ts;
+  } else {
+    // create new block
+    const block = document.createElement('div'); block.className='msg-block' + (isMe?' own':'');
+    block.dataset.author = m.uid||m.author; block.dataset.lastTs = m.ts;
+    const avatarCol = document.createElement('div'); avatarCol.className='avatar-col';
+    const img = document.createElement('img'); img.className='avatar'; img.src = m.photoURL || (local.photoURL || 'https://placehold.co/88');
+    avatarCol.appendChild(img);
+    const container = document.createElement('div'); container.style.minWidth='120px';
+    // top meta line: nickname, tag, time (왼쪽에서부터)
+    const meta = document.createElement('div'); meta.className='meta-line';
+    const nameSpan = document.createElement('span'); nameSpan.innerHTML = `<strong>${escapeHtml(m.author||'익명')}</strong>`;
+    const tagSpan = document.createElement('span'); tagSpan.className='text-sm text-gray-500'; tagSpan.textContent = '#'+(m.tag||'—');
+    const timeSpan = document.createElement('span'); timeSpan.className='text-sm text-gray-500'; timeSpan.textContent = new Date(m.ts).toLocaleTimeString();
+    meta.appendChild(nameSpan); meta.appendChild(tagSpan); meta.appendChild(timeSpan);
+    const stack = document.createElement('div'); stack.className='messages-stack';
+    appendBubble(stack, m, isMe);
+    // actions (show on hover)
+    const actions = document.createElement('div'); actions.className='controls'; actions.style.marginTop='6px';
+    // reply
+    const replyBtn = document.createElement('button'); replyBtn.className='icon-btn'; replyBtn.textContent='↩'; replyBtn.title='답장';
+    replyBtn.onclick = ()=>{ replyTo = m.key; replyText.textContent = m.text ? m.text.slice(0,120) : '[첨부]'; replyPreview.style.display='flex'; };
+    actions.appendChild(replyBtn);
+    // edit/delete for own
+    if(isMe){
+      const edit = document.createElement('button'); edit.className='icon-btn'; edit.textContent='✏'; edit.title='수정';
+      edit.onclick = async ()=>{ const t = prompt('수정', m.text||''); if(t===null) return; await db.ref('rooms/'+currentRoom+'/messages/'+m.key).update({ text:t, edited:true }); };
+      const del = document.createElement('button'); del.className='icon-btn delete'; del.textContent='🗑'; del.title='삭제';
+      del.onclick = async ()=>{ if(!confirm('정말 삭제?')) return; await db.ref('rooms/'+currentRoom+'/messages/'+m.key).remove(); };
+      actions.appendChild(edit); actions.appendChild(del);
+    }
+    container.appendChild(meta); container.appendChild(stack); container.appendChild(actions);
+    block.appendChild(avatarCol); block.appendChild(container);
+    chatBody.appendChild(block);
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+  markRead(m.key);
+}
+
+function appendBubble(stack, m, isMe){
+  const bubble = document.createElement('div'); bubble.id='msg_'+m.key; bubble.className='bubble ' + (isMe?'own':'other');
+  // reply snippet inside bubble if m.replyTo
+  if(m.replyTo){
+    const q = document.createElement('div'); q.className='reply-small'; q.textContent='답글 로딩...'; bubble.appendChild(q);
+    db.ref('rooms/'+currentRoom+'/messages/'+m.replyTo).once('value').then(snap=>{
+      if(snap.exists()){
+        q.textContent = '답글 → '+ (snap.val().text||'[첨부]');
+        q.onclick = ()=>{ const tgt = document.getElementById('msg_'+m.replyTo); if(tgt){ tgt.scrollIntoView({behavior:'smooth',block:'center'}); tgt.classList.add('reply-target'); setTimeout(()=>tgt.classList.remove('reply-target'),1200); } };
+        // if reply text longer than composing? we will set max-width and wrap
+        const len = (snap.val().text||'').length;
+        const approx = Math.min(520, Math.max(120, Math.floor(len*6)));
+        if(approx > (document.querySelector('.chat-body').clientWidth/3)) { q.style.whiteSpace='normal'; }
+        q.style.maxWidth = approx+'px';
+      }
+    });
+  }
+  // attachments
+  if(m.attachments && Array.isArray(m.attachments)){
+    m.attachments.forEach(a=>{
+      if(a.type && a.type.startsWith('image/')){
+        const img = document.createElement('img'); img.src=a.url; img.style.maxWidth='220px'; img.style.borderRadius='8px'; img.style.display='block'; img.style.marginBottom='6px';
+        bubble.appendChild(img);
+      } else {
+        const link = document.createElement('a'); link.href=a.url; link.target='_blank'; link.textContent=a.name||'파일'; bubble.appendChild(link);
+      }
+    });
+  }
+  // text + mentions
+  if(m.text){
+    let text = escapeHtml(m.text);
+    const mentions = (m.text.match(/@([a-zA-Z0-9_]+)/g) || []).map(x=>x.replace('@','').toLowerCase());
+    for(const t of mentions){
+      text = text.replace(new RegExp('@'+t,'gi'), `<span class="mention-inline">@${t}</span>`);
+      const local = getLocalProfile();
+      if(local && local.tag && local.tag.toLowerCase()===t){ bubble.style.background = 'var(--mention-bg)'; }
+    }
+    const wrap = document.createElement('div'); wrap.innerHTML = marked.parse(text); bubble.appendChild(wrap);
+  }
+  if(m.edited) bubble.innerHTML += '<div class="text-sm text-gray-500">(편집됨)</div>';
+  stack.appendChild(bubble);
+}
+
+/* update / remove */
+function updateMessageInUI(m){
+  const old = document.getElementById('msg_'+m.key);
+  if(!old) return;
+  const parent = old.parentElement;
+  old.remove();
+  appendBubble(parent, m, parent.closest('.msg-block')?.classList.contains('own'));
+}
+function removeMessageFromUI(key){
+  const el = document.getElementById('msg_'+key);
+  if(!el) return;
+  const parent = el.parentElement;
+  el.remove();
+  // if parent (stack) empty, remove block
+  if(parent && parent.children.length===0){
+    const block = parent.closest('.msg-block');
+    if(block) block.remove();
+  }
+}
+
+/* ---------- send message ---------- */
+attachBtn.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; selectedFile=f; toast('파일 준비됨: '+f.name); });
+
+let sending=false;
+sendBtn.addEventListener('click', ()=> sendMessage());
+msgInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendMessage(); });
+
+async function sendMessage(){
+  if(!currentRoom) return toast('먼저 방을 선택하세요');
+  if(sending) return;
+  sending=true; sendBtn.disabled=true; sendBtn.textContent='전송중...';
+  const local = getLocalProfile();
+  const author = auth.currentUser ? auth.currentUser.displayName : (local.name || '익명');
+  const uidv = auth.currentUser ? auth.currentUser.uid : local.uid;
+  const text = (msgInput.value||'').trim();
+  const attachments = [];
+  if(selectedFile){ try{ const meta = await uploadFile(selectedFile,'room_'+currentRoom); attachments.push(meta); }catch(e){ toast('업로드 실패'); sending=false; sendBtn.disabled=false; sendBtn.textContent='전송'; return; } }
+  if(!text && attachments.length===0){ sending=false; sendBtn.disabled=false; sendBtn.textContent='전송'; return; }
+  const payload = { author, uid:uidv, text:text||'', attachments:attachments.length?attachments:null, ts: now(), edited:false, tag:getLocalProfile().tag || null };
+  if(replyTo) payload.replyTo = replyTo;
+  await db.ref('rooms/'+currentRoom+'/messages').push(payload);
+  await db.ref('rooms/'+currentRoom).update({ lastMessage: text||'[첨부]', lastTs: now() });
+  msgInput.value=''; selectedFile=null; replyTo=null; replyPreview.style.display='none';
+  sending=false; sendBtn.disabled=false; sendBtn.textContent='전송';
+}
+
+/* upload helper */
+async function uploadFile(file,prefix){
+  const path = (prefix||'uploads') + '/' + Date.now() + '_' + encodeURIComponent(file.name);
+  const ref = storage.ref(path);
+  const snap = await ref.put(file);
+  const url = await snap.ref.getDownloadURL();
+  return { url, name: file.name, size: file.size, type: file.type };
+}
+
+/* mark read */
+async function markRead(msgKey){
+  if(!currentRoom||!msgKey) return;
+  const myUid = auth.currentUser ? auth.currentUser.uid : getLocalProfile().uid;
+  if(!myUid) return;
+  const ref = db.ref('rooms/'+currentRoom+'/messages/'+msgKey+'/reads/'+myUid);
+  const snap = await ref.once('value'); if(!snap.exists()) await ref.set(now());
+}
+
+/* presence & auth */
+auth.onAuthStateChanged(async user=>{
+  if(user){ await ensureProfile(); const presRef = db.ref('presence/'+user.uid); presRef.set({ online:true, ts: now() }); presRef.onDisconnect().remove(); attachInvitationsListener(user.uid); }
+  else { /* nothing */ }
+});
+
+/* init */
+(async function init(){
+  if(!localStorage.getItem('local_profile')){
+    const name = prompt('비회원 닉네임', '손님') || '손님';
+    const tag = prompt('비회원 태그', 'guest'+Math.floor(Math.random()*9000)) || ('guest'+Math.floor(Math.random()*9000));
+    const uidv = 'anon_'+Math.random().toString(36).slice(2,8);
+    setLocalProfile({ uid:uidv, name, tag, photoURL:'' });
+  }
+  await ensureProfile();
+  loadRooms();
+  // keep inviteList cleaned up if no invites
+  document.getElementById('inviteList').innerHTML = '';
+})();
+</script>
 </body>
 </html>
