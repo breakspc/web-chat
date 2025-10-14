@@ -6,25 +6,17 @@
 <title>Chat v6 — 단일파일</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  /* Root variables for theming */
   :root{
     --bg:#f4f7fb; --card:#fff; --text-color:#1e293b; --accent:#2563eb; --muted:#6b7280; --border:rgba(15,23,42,0.06);
     --mention-bg:#fff7cc; --reply-bg:#ecfdf5;
-    /* Custom: Solid colors for owned bubble */
-    --own-bubble-bg:#e0f2ff; 
+    --own-bubble-bg:#e0f2ff;
   }
   html.dark{
     --bg:#061022;--card:#0b1220;--text-color:#e2e8f0;--accent:#3b82f6;--muted:#9aa3b2;--border:rgba(255,255,255,0.06);
     --mention-bg:#2b2a0f;--reply-bg:#063b1f;
-    /* Custom: Solid colors for owned bubble */
     --own-bubble-bg:#0f3f6e;
   }
-  body{
-    background:var(--bg);
-    font-family:Inter,system-ui,'Noto Sans KR',sans-serif;
-    color:var(--text-color); /* <-- 다크모드 텍스트 색상 변경 */
-    margin:0;padding:18px
-  }
+  body{background:var(--bg);font-family:Inter,system-ui,'Noto Sans KR',sans-serif;color:var(--text-color);margin:0;padding:18px}
   .app{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:320px 1fr;gap:18px}
   .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 8px 24px rgba(2,6,23,0.06);border:1px solid var(--border)}
   .avatar{width:44px;height:44px;border-radius:999px;object-fit:cover;border:1px solid var(--border);cursor:pointer}
@@ -36,29 +28,13 @@
   .chat-area{display:flex;flex-direction:column;height:80vh}
   .chat-header{display:flex;justify-content:space-between;align-items:center;gap:12px}
   .chat-body{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:8px;background:var(--card);border-radius:10px;border:1px solid var(--border)}
-  /* message */
   .msg-block{display:flex;gap:10px;align-items:flex-start}
   .msg-block.own{flex-direction:row-reverse}
   .avatar-col{width:44px}
-  .bubble{
-    display:inline-block;padding:10px;border-radius:12px;min-width:90px;max-width:68%;word-break:break-word;white-space:pre-wrap;
-    border:1px solid var(--border);background:var(--card);
-    margin-bottom: 4px; /* <--- 연속된 메시지 세로 간격 추가 */
-  }
-  .bubble.own{
-    background:var(--own-bubble-bg); /* <-- 그라데이션 제거, 단색 배경 */
-    border-color:rgba(37,99,235,0.12);
-  }
-  /* 연속된 메시지 세로 정렬 */
-  .messages-stack{
-    display: flex;
-    flex-direction: column; /* <-- 세로 정렬 */
-    align-items: flex-start;
-  }
-  .msg-block.own .messages-stack{
-    align-items: flex-end;
-  }
-
+  .bubble{display:inline-block;padding:10px;border-radius:12px;min-width:90px;max-width:68%;word-break:break-word;white-space:pre-wrap;border:1px solid var(--border);background:var(--card);margin-bottom:4px}
+  .bubble.own{background:var(--own-bubble-bg);border-color:rgba(37,99,235,0.12)}
+  .messages-stack{display:flex;flex-direction:column;align-items:flex-start}
+  .msg-block.own .messages-stack{align-items:flex-end}
   .meta-line{font-size:12px;color:var(--muted);margin-bottom:6px;display:flex;gap:8px;align-items:center}
   .controls{opacity:0;transition:opacity .12s;display:flex;gap:6px;align-items:center}
   .msg-block:hover .controls{opacity:1}
@@ -67,16 +43,12 @@
   .mention-inline{background:transparent;color:#6b4b00;font-weight:700;padding:2px 6px;border-radius:6px}
   .mention-highlight{background:var(--mention-bg);border-radius:8px;padding:6px}
   .reply-small{background:var(--reply-bg);border-radius:6px;padding:6px;margin-bottom:8px;color:inherit}
-  /* reply preview above input */
   .reply-preview{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--reply-bg)}
-  /* invite list left bottom */
   .invite-list{margin-top:12px;border-top:1px dashed var(--border);padding-top:8px}
   .invite-item{display:flex;justify-content:space-between;padding:6px;border-radius:8px;background:rgba(0,0,0,0.02);align-items:center;margin-bottom:6px}
-  /* modal */
   .modal-backdrop{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:60}
   .modal{background:var(--card);padding:16px;border-radius:12px;border:1px solid var(--border);width:420px}
-  /* small responsive */
-  @media(max-width:920px){ .app{grid-template-columns:1fr} .rooms{display:none} }
+  @media(max-width:920px){.app{grid-template-columns:1fr}.rooms{display:none}}
 </style>
 </head>
 <body>
@@ -98,11 +70,6 @@
     </div>
 
     <div id="roomsList" class="rooms"></div>
-
-    <div class="invite-list" id="inviteListWrap" style="display:none">
-      <div class="text-sm text-gray-500 mb-2">초대 알림</div>
-      <div id="inviteList"></div>
-    </div>
   </div>
 
   <div class="card chat-area">
@@ -127,9 +94,9 @@
     </div>
 
     <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
-      <input id="msgInput" placeholder="메시지 입력. @태그로 멘션" style="flex:1;padding:.6rem;border-radius:10px;border:1px solid var(--border)"/>
+      <input id="msgInput" placeholder="메시지 입력..." style="flex:1;padding:.6rem;border-radius:10px;border:1px solid var(--border)"/>
       <input id="fileInput" type="file" style="display:none" />
-      <button id="attachBtn" class="icon-btn" style="font-size:20px;font-weight:900">🔗</button>
+      <button id="attachBtn" class="icon-btn" style="font-size:18px">📎</button>
       <button id="sendBtn" class="btn">전송</button>
     </div>
   </div>
@@ -143,706 +110,28 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
 <script>
-/* ========== CONFIG ========== */
-// 네가 준 config 그대로 넣음
-const firebaseConfig = {
-  apiKey: "AIzaSyA67fYuBMY3vDQ5DpC5VXnzC1tkw7oBZfQ",
-  authDomain: "chat-29b71.firebaseapp.com",
-  databaseURL: "https://chat-29b71-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "chat-29b71",
-  storageBucket: "chat-29b71.appspot.com",
-  messagingSenderId: "838945499737",
-  appId: "1:838945499737:web:bc4d105d8189837c4e9f48",
-  measurementId: "G-WW5Q1HPS8P"
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.database();
-const storage = firebase.storage();
-/* ============================ */
+const firebaseConfig={apiKey:"AIzaSyA67fYuBMY3vDQ5DpC5VXnzC1tkw7oBZfQ",authDomain:"chat-29b71.firebaseapp.com",databaseURL:"https://chat-29b71-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"chat-29b71",storageBucket:"chat-29b71.appspot.com",messagingSenderId:"838945499737",appId:"1:838945499737:web:bc4d105d8189837c4e9f48",measurementId:"G-WW5Q1HPS8P"};firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth(),db=firebase.database(),storage=firebase.storage();
+const profileAvatar=document.getElementById('profileAvatar'),displayNameEl=document.getElementById('displayName'),displayTagEl=document.getElementById('displayTag'),darkToggle=document.getElementById('darkToggle'),roomsList=document.getElementById('roomsList'),openCreateRoom=document.getElementById('openCreateRoom'),chatBody=document.getElementById('chatBody'),msgInput=document.getElementById('msgInput'),sendBtn=document.getElementById('sendBtn'),attachBtn=document.getElementById('attachBtn'),fileInput=document.getElementById('fileInput'),replyPreview=document.getElementById('replyPreview'),replyText=document.getElementById('replyText'),cancelReply=document.getElementById('cancelReply'),leaveRoomBtn=document.getElementById('leaveRoom'),roomTitle=document.getElementById('roomTitle'),roomInfo=document.getElementById('roomInfo');
+let currentRoom=null,messagesRef=null,messageListener=null,selectedFile=null,replyTo=null;
+const MSG_LIMIT=1000;
+const now=()=>Date.now();function uid(){return'u'+Math.random().toString(36).slice(2,9)}function escapeHtml(s){return s?s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'):''}
+function toast(msg,t=2800){const n=document.createElement('div');n.className='card';n.style.marginBottom='8px';n.textContent=msg;document.getElementById('toastArea').appendChild(n);setTimeout(()=>n.remove(),t);}
+function getLocalProfile(){return JSON.parse(localStorage.getItem('local_profile')||'{}')}function setLocalProfile(p){localStorage.setItem('local_profile',JSON.stringify(p))}
+darkToggle.addEventListener('click',()=>{document.documentElement.classList.toggle('dark');darkToggle.textContent=document.documentElement.classList.contains('dark')?'라이트 모드':'다크 모드';localStorage.setItem('theme',document.documentElement.classList.contains('dark')?'dark':'light')});
+if(localStorage.getItem('theme')==='dark'||(!localStorage.getItem('theme')&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');darkToggle.textContent='라이트 모드'}else{darkToggle.textContent='다크 모드'}
 
-const profileAvatar = document.getElementById('profileAvatar');
-const displayNameEl = document.getElementById('displayName');
-const displayTagEl = document.getElementById('displayTag');
-const darkToggle = document.getElementById('darkToggle');
-const roomsList = document.getElementById('roomsList');
-const openCreateRoom = document.getElementById('openCreateRoom');
-const inviteList = document.getElementById('inviteList');
-const chatBody = document.getElementById('chatBody');
-const msgInput = document.getElementById('msgInput');
-const sendBtn = document.getElementById('sendBtn');
-const attachBtn = document.getElementById('attachBtn');
-const fileInput = document.getElementById('fileInput');
-const replyPreview = document.getElementById('replyPreview');
-const replyText = document.getElementById('replyText');
-const cancelReply = document.getElementById('cancelReply');
-const leaveRoomBtn = document.getElementById('leaveRoom');
-const roomTitle = document.getElementById('roomTitle');
-const roomInfo = document.getElementById('roomInfo');
-const roomMembers = document.getElementById('roomMembers');
-
-let currentRoom = null;
-let messagesRef = null;
-let messageListener = null;
-let selectedFile = null;
-let replyTo = null;
-let lastAuthor = null;
-const MSG_LIMIT = 1000;
-
-// helper
-const now = ()=>Date.now();
-function uid(){ return 'u'+Math.random().toString(36).slice(2,9) }
-function escapeHtml(s){ if(!s) return ''; return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function toast(msg, t=2800){ const n=document.createElement('div'); n.className='card'; n.style.marginBottom='8px'; n.textContent=msg; document.getElementById('toastArea').appendChild(n); setTimeout(()=>{ n.remove() }, t); }
-function getLocalProfile(){ return JSON.parse(localStorage.getItem('local_profile')||'{}'); }
-function setLocalProfile(p){ localStorage.setItem('local_profile', JSON.stringify(p)); }
-
-/* ---------- UI behavior ---------- */
-darkToggle.addEventListener('click', ()=>{ 
-  document.documentElement.classList.toggle('dark'); 
-  darkToggle.textContent = document.documentElement.classList.contains('dark') ? '라이트 모드' : '다크 모드';
-  localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-});
-
-// Initial theme check
-if(localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-  document.documentElement.classList.add('dark');
-  darkToggle.textContent = '라이트 모드';
-} else {
-  darkToggle.textContent = '다크 모드';
-}
-
-// profile click -> modal (persistent)
-profileAvatar.addEventListener('click', ()=> openProfileModal() );
-
-/* ---------- Modals (Functions unchanged from previous version, omitted for brevity) ---------- */
-function openModal(html){ 
-  const m = document.createElement('div'); m.className='modal-backdrop';
-  m.innerHTML = `<div class="modal">${html}</div>`;
-  m.onclick = (e)=>{ if(e.target===m) m.remove(); };
-  document.getElementById('modals').appendChild(m);
-  return m;
-}
-function closeModals(){ document.getElementById('modals').innerHTML=''; }
-
-/* Generic Custom Modals */
-function openConfirmModal(title, text){
-  return new Promise(resolve => {
-    const modal = openModal(`<div style="display:flex;flex-direction:column;gap:8px">
-      <div style="font-weight:700">${title}</div>
-      <div>${text}</div>
-      <div style="display:flex;justify-content:flex-end;gap:8px">
-        <button id="confirmCancel" class="btn-ghost">취소</button>
-        <button id="confirmOk" class="btn">확인</button>
-      </div>
-    </div>`);
-    modal.querySelector('#confirmCancel').onclick = ()=> { modal.remove(); resolve(false); };
-    modal.querySelector('#confirmOk').onclick = ()=> { modal.remove(); resolve(true); };
-  });
-}
-
-function openEditMessageModal(currentText){
-  return new Promise(resolve => {
-    const modal = openModal(`<div style="display:flex;flex-direction:column;gap:8px">
-      <div style="font-weight:700">메시지 수정</div>
-      <textarea id="editMsgText" style="padding:.6rem;border-radius:8px;border:1px solid var(--border);min-height:100px">${currentText}</textarea>
-      <div style="display:flex;justify-content:flex-end;gap:8px">
-        <button id="editCancel" class="btn-ghost">취소</button>
-        <button id="editOk" class="btn">수정</button>
-      </div>
-    </div>`);
-    modal.querySelector('#editCancel').onclick = ()=> { modal.remove(); resolve(null); };
-    modal.querySelector('#editOk').onclick = ()=>{
-      const newText = modal.querySelector('#editMsgText').value;
-      modal.remove();
-      resolve(newText);
-    };
-  });
-}
-
-async function openEditRoomNameModal(roomId, currentName){
-  return new Promise(resolve => {
-    const modal = openModal(`<div style="display:flex;flex-direction:column;gap:8px">
-      <div style="font-weight:700">방 이름 수정</div>
-      <input id="editRoomName" placeholder="방 이름" value="${currentName}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
-      <div style="display:flex;justify-content:flex-end;gap:8px">
-        <button id="editCancel" class="btn-ghost">취소</button>
-        <button id="editOk" class="btn">수정</button>
-      </div>
-    </div>`);
-    modal.querySelector('#editCancel').onclick = ()=> { modal.remove(); resolve(); };
-    modal.querySelector('#editOk').onclick = async ()=>{
-      const newName = modal.querySelector('#editRoomName').value.trim();
-      if(!newName) return toast('이름을 입력하세요');
-      await db.ref('rooms/'+roomId).update({ name:newName });
-      modal.remove();
-      resolve();
-    };
-  });
-}
-
-/* Custom Modals for Initial Setup (unchanged) */
-async function openInitialProfileSetup(user){
-  return new Promise(resolve => {
-    const defaultTag = (user.email?user.email.split('@')[0]:'user');
-    const html = `<div style="display:flex;flex-direction:column;gap:8px">
-      <div style="font-weight:700">프로필 설정 (최초 1회)</div>
-      <input id="initName" placeholder="표시명 (닉네임)" value="${user.displayName||''}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
-      <input id="initTag" placeholder="고유 태그 (소문자/숫자/_)" value="${defaultTag}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
-      <div style="color:red;font-size:12px;text-align:center" id="tagError"></div>
-      <div style="display:flex;justify-content:flex-end;gap:8px">
-        <button id="initOk" class="btn">시작하기</button>
-      </div>
-    </div>`;
-    const m = openModal(html);
-    m.querySelector('#initOk').onclick = async ()=>{
-      const name = m.querySelector('#initName').value.trim();
-      let tag = m.querySelector('#initTag').value.trim().toLowerCase().replace(/\s+/g,'');
-      if(!name) return toast('닉네임 입력');
-      if(!tag) return toast('태그 입력');
-      
-      const tagRef = db.ref('tags/'+tag);
-      const res = await tagRef.transaction(curr=>{ if(curr==null) return user.uid; return; }, undefined, false);
-      if(!res.committed) {
-         m.querySelector('#tagError').textContent = '이미 사용 중인 태그입니다. 다른 태그를 입력하세요.';
-         return;
-      }
-      await db.ref('users/'+user.uid).set({ uid:user.uid, name, tag, photoURL:user.photoURL||'' });
-      displayNameEl.textContent = name; displayTagEl.textContent = '#'+tag;
-      if(user.photoURL) profileAvatar.src = user.photoURL;
-      m.remove();
-      resolve();
-    };
-  });
-}
-async function openInitialAnonProfileSetup(){
-  return new Promise(resolve => {
-    const defaultTag = 'guest'+Math.floor(Math.random()*9000);
-    const html = `<div style="display:flex;flex-direction:column;gap:8px">
-      <div style="font-weight:700">비회원 프로필 설정</div>
-      <input id="initName" placeholder="표시명 (닉네임)" value="손님" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
-      <input id="initTag" placeholder="고유 태그 (소문자/숫자/_)" value="${defaultTag}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
-      <div style="display:flex;justify-content:flex-end;gap:8px">
-        <button id="initOk" class="btn">시작하기</button>
-      </div>
-    </div>`;
-    const m = openModal(html);
-    m.querySelector('#initOk').onclick = ()=>{
-      const name = m.querySelector('#initName').value.trim();
-      const tag = m.querySelector('#initTag').value.trim().toLowerCase().replace(/\s+/g,'');
-      const uidv = 'anon_'+Math.random().toString(36).slice(2,8);
-      setLocalProfile({ uid:uidv, name, tag, photoURL:'' });
-      m.remove();
-      resolve();
-    };
-  });
-}
-
-/* Profile modal: edit name/tag, login/logout (unchanged) */
-function openProfileModal(){
-  const local = getLocalProfile();
-  const logged = !!auth.currentUser;
-  const html = `
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;gap:10px;align-items:center">
-        <img id="modalProfileImg" src="${local.photoURL || profileAvatar.src}" style="width:56px;height:56px;border-radius:999px"/>
-        <div>
-          <div style="font-weight:700" id="modalProfileName">${local.name || '비회원'}</div>
-          <div class="text-sm text-gray-500" id="modalProfileTag">#${local.tag || '—'}</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button id="modalEditProfile" class="btn-ghost" style="flex:1">닉네임/태그 변경</button>
-        <button id="modalUploadAvatar" class="btn-ghost" style="flex:1">프로필 사진 업로드</button>
-      </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button id="modalAuthBtn" class="btn-ghost" style="flex:1">${logged? '로그아웃':'로그인(구글)'}</button>
-        <button id="modalClose" class="btn-ghost" style="flex:1">닫기</button>
-      </div>
-    </div>`;
-  const m = openModal(html);
-  m.querySelector('#modalClose').onclick = ()=> m.remove();
-  
-  // Custom modal for name/tag edit
-  m.querySelector('#modalEditProfile').onclick = async ()=>{
-    m.remove(); // Close main profile modal first
-    const editHtml = `<div style="display:flex;flex-direction:column;gap:8px">
-        <div style="font-weight:700">닉네임/태그 변경</div>
-        <input id="editName" placeholder="표시명 (닉네임)" value="${local.name||''}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
-        <input id="editTag" placeholder="고유 태그 (소문자/숫자/_)" value="${local.tag||''}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
-        <div style="color:red;font-size:12px;text-align:center" id="tagError"></div>
-        <div style="display:flex;justify-content:flex-end;gap:8px">
-          <button id="editCancel" class="btn-ghost">취소</button>
-          <button id="editOk" class="btn">변경</button>
-        </div>
-      </div>`;
-    const editModal = openModal(editHtml);
-    editModal.querySelector('#editCancel').onclick = ()=> editModal.remove();
-    editModal.querySelector('#editOk').onclick = async ()=>{
-      const newName = editModal.querySelector('#editName').value.trim();
-      let newTag = editModal.querySelector('#editTag').value.trim().toLowerCase().replace(/\s+/g,'');
-
-      if(!newName) return toast('닉네임을 입력하세요');
-      if(!newTag) return toast('유효한 태그를 입력하세요');
-      
-      try {
-        if(auth.currentUser){
-          const tagRef = db.ref('tags/'+newTag);
-          const res = await tagRef.transaction(curr=>{
-            if(curr!=null && curr!==auth.currentUser.uid) return;
-            return auth.currentUser.uid; 
-          }, undefined, false);
-
-          if(!res.committed && res.snapshot.val()!==auth.currentUser.uid) { 
-             editModal.querySelector('#tagError').textContent = '이미 사용 중인 태그입니다. 다른 태그를 입력하세요.';
-             return;
-          }
-          // Delete old tag if changed
-          if(local.tag && local.tag !== newTag) {
-            await db.ref('tags/' + local.tag).remove();
-          }
-          await db.ref('users/'+auth.currentUser.uid).update({ name:newName, tag:newTag });
-        } else {
-          local.name = newName; local.tag = newTag; setLocalProfile(local);
-        }
-        displayNameEl.textContent = newName; displayTagEl.textContent = '#'+newTag;
-        editModal.remove();
-        toast('프로필 업데이트됨');
-      } catch(e) {
-        toast('업데이트 오류: '+e.message);
-      }
-    };
-  };
-
-  m.querySelector('#modalUploadAvatar').onclick = ()=>{
-    const inp = document.createElement('input'); inp.type='file'; inp.accept='image/*';
-    inp.onchange = async e=>{
-      const f = e.target.files[0]; if(!f) return;
-      const ref = storage.ref('profiles/'+Date.now()+'_'+f.name);
-      const snap = await ref.put(f);
-      const url = await snap.ref.getDownloadURL();
-      if(auth.currentUser){ 
-        await auth.currentUser.updateProfile({photoURL:url}); 
-        await db.ref('users/'+auth.currentUser.uid).update({photoURL:url}); 
-      } else { 
-        local.photoURL = url; setLocalProfile(local); 
-      }
-      profileAvatar.src=url;
-      m.querySelector('#modalProfileImg').src=url;
-      toast('프로필 사진 업로드됨');
-    };
-    inp.click();
-  };
-  m.querySelector('#modalAuthBtn').onclick = async ()=>{
-    if(auth.currentUser){ // logout
-      const uid = auth.currentUser.uid;
-      await auth.signOut();
-      await db.ref('presence/'+uid).remove().catch(()=>{});
-      localStorage.removeItem('local_profile');
-      location.reload();
-    } else {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      try{ 
-        await auth.signInWithPopup(provider); 
-        await ensureProfile(); 
-        m.remove(); 
-      }catch(e){ 
-        toast(e.message) 
-      }
-    }
-  };
-}
-
-
-/* ---------- ensure profile & presence ---------- */
-async function ensureProfile(){
-  const myUid = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
-  if(auth.currentUser){
-    const u = auth.currentUser;
-    const snap = await db.ref('users/'+u.uid).once('value'); const profile = snap.val() || {};
-    if(!profile.tag || !profile.name){
-      await openInitialProfileSetup(u); 
-    } else {
-      displayNameEl.textContent = profile.name; displayTagEl.textContent = '#'+profile.tag;
-      if(profile.photoURL) profileAvatar.src = profile.photoURL;
-    }
-    // presence
-    const presRef = db.ref('presence/'+u.uid);
-    presRef.set({ online:true, ts: now() });
-    presRef.onDisconnect().remove();
-    // attachInvitationsListener(u.uid); // Invitation removed
-  } else {
-    if(!localStorage.getItem('local_profile')){
-      await openInitialAnonProfileSetup(); 
-    }
-    const p = getLocalProfile();
-    displayNameEl.textContent = p.name; displayTagEl.textContent = '#'+p.tag; 
-    if(p.photoURL) profileAvatar.src = p.photoURL;
-  }
-}
-
-/* ---------- rooms ---------- */
-openCreateRoom.addEventListener('click', ()=> openCreateRoomModal() );
+openCreateRoom.addEventListener('click',()=>openCreateRoomModal());
 function openCreateRoomModal(){
-  const modal = openModal(`<div style="display:flex;flex-direction:column;gap:8px">
-    <div style="font-weight:700">방 생성</div>
-    <input id="newRoomName" placeholder="방 이름" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
-    <div style="display:flex;justify-content:flex-end;gap:8px">
-      <button id="createCancel" class="btn-ghost">취소</button>
-      <button id="createOk" class="btn">생성</button>
-    </div>
-  </div>`);
-  modal.querySelector('#createCancel').onclick = ()=> modal.remove();
-  modal.querySelector('#createOk').onclick = async ()=>{
-    const name = modal.querySelector('#newRoomName').value.trim(); 
-    if(!name) return toast('방 이름을 입력하세요'); 
-    const rid = 'r_'+Math.random().toString(36).slice(2,8);
-    const me = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
-    // 방 생성 시 자동으로 방 멤버로 추가
-    await db.ref('rooms/'+rid).set({ id:rid, name, createdAt: now(), owner:me, members: { [me]: true } });
-    modal.remove(); loadRooms();
-  };
+  const m=openModal(`<div style="display:flex;flex-direction:column;gap:8px"><div style="font-weight:700">방 생성</div><input id="newRoomName" placeholder="방 이름" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/><div style="display:flex;justify-content:flex-end;gap:8px"><button id="createCancel" class="btn-ghost">취소</button><button id="createOk" class="btn">생성</button></div></div>`);
+  m.querySelector('#createCancel').onclick=()=>m.remove();
+  m.querySelector('#createOk').onclick=async()=>{const n=m.querySelector('#newRoomName').value.trim();if(!n)return toast('방 이름 입력');const rid='r_'+Math.random().toString(36).slice(2,8);const me=auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;await db.ref('rooms/'+rid).set({id:rid,name:n,createdAt:now(),owner:me,members:{[me]:true}});m.remove();loadRooms();}
 }
+function openModal(html){const m=document.createElement('div');m.className='modal-backdrop';m.innerHTML=`<div class="modal">${html}</div>`;m.onclick=e=>{if(e.target===m)m.remove()};document.getElementById('modals').appendChild(m);return m;}
+async function loadRooms(){const s=await db.ref('rooms').once('value');const data=s.val()||{};roomsList.innerHTML='';const my=auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;Object.keys(data).forEach(id=>{const r=data[id];const el=document.createElement('div');el.className='room-item';el.dataset.id=id;el.innerHTML=`<img class="avatar" src="${r.thumb||'https://placehold.co/36'}"/><div style="flex:1"><div style="font-weight:600">${r.name}</div><div class="text-sm text-gray-500">${r.lastMessage?escapeHtml(r.lastMessage.slice(0,48)):'설명 없음'}</div></div>`;const act=document.createElement('div');act.style.marginLeft='8px';const invite=document.createElement('button');invite.className='icon-btn';invite.textContent='➕';invite.title='초대';invite.onclick=e=>{e.stopPropagation();openInviteModal(id)};const edit=document.createElement('button');edit.className='icon-btn';edit.textContent='⚙️';edit.title='설정';edit.onclick=e=>{e.stopPropagation();openEditRoomNameModal(id,r.name)};act.appendChild(invite);act.appendChild(edit);el.appendChild(act);el.addEventListener('click',()=>selectRoom(id));roomsList.appendChild(el)})}
+function openInviteModal(id){const m=openModal(`<div style="display:flex;flex-direction:column;gap:8px"><div style="font-weight:700">초대</div><input id="inviteTag" placeholder="상대 태그 입력" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/><div style="display:flex;justify-content:flex-end;gap:8px"><button id="inviteCancel" class="btn-ghost">취소</button><button id="inviteSend" class="btn">보내기</button></div></div>`);m.querySelector('#inviteCancel').onclick=()=>m.remove();m.querySelector('#inviteSend').onclick=async()=>{const tag=m.querySelector('#inviteTag').value.trim().toLowerCase();if(!tag)return toast('태그 입력');const t=await db.ref('tags/'+tag).once('value');if(!t.exists())return toast('해당 유저 없음');const uid=t.val();await db.ref('rooms/'+id+'/members/'+uid).set(true);toast('추가 완료');m.remove();}}
+function openEditRoomNameModal(id,n){const m=openModal(`<div style="display:flex;flex-direction:column;gap:8px"><div style="font-weight:700">방 이름 수정</div><input id="editRoomName" value="${n}" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/><div style="display:flex;justify-content:flex-end;gap:8px"><button id="editCancel" class="btn-ghost">취소</button><button id="editOk" class="btn">수정</button></div></div>`);m.querySelector('#editCancel').onclick=()=>m.remove();m.querySelector('#editOk').onclick=async()=>{const nn=m.querySelector('#editRoomName').value.trim();if(!nn)return toast('이름 입력');await db.ref('rooms/'+id).update({name:nn});m.remove();loadRooms();}}
 
-// **요청사항 반영: 모든 방에 자동으로 들어가도록 수정**
-async function loadRooms(){
-  const allRoomsSnap = await db.ref('rooms').once('value'); 
-  const data = allRoomsSnap.val()||{};
-  roomsList.innerHTML='';
-  const myUid = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
-
-  // 1. 모든 방에 현재 사용자를 자동으로 추가
-  const updates = {};
-  let roomsToAdd = [];
-  Object.keys(data).forEach(id => {
-    const r = data[id];
-    // 만약 멤버 목록에 없다면, 업데이트 목록에 추가
-    if (!r.members || !r.members[myUid]) {
-      updates['rooms/' + id + '/members/' + myUid] = true;
-      roomsToAdd.push(Object.assign({id}, r));
-    }
-  });
-
-  // DB 업데이트 (await 필요 없음)
-  if(Object.keys(updates).length > 0) {
-    db.ref().update(updates).then(() => {
-      // DB 업데이트 후 다시 로드 (혹은 새로 추가된 방만 UI에 추가)
-      // 단순화를 위해 업데이트가 완료된 후 다시 불러옴
-      loadRoomsAfterJoin();
-    }).catch(error => {
-      console.error("Auto-join error:", error);
-      loadRoomsAfterJoin(); // 에러가 나도 일단 현재 방 목록으로 진행
-    });
-  } else {
-    // 이미 모든 방에 들어가 있다면 바로 로드
-    loadRoomsAfterJoin();
-  }
-}
-
-async function loadRoomsAfterJoin() {
-  const finalSnap = await db.ref('rooms').once('value'); 
-  const data = finalSnap.val()||{};
-  roomsList.innerHTML='';
-  const myUid = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
-
-  Object.keys(data).sort((a,b)=> (data[a].createdAt||0)-(data[b].createdAt||0)).forEach(id=>{
-    const r = data[id];
-    // 이 시점에서는 모든 방에 들어가 있기 때문에 member 체크는 생략
-    const el = document.createElement('div'); el.className='room-item'; el.dataset.id=id;
-    const thumb = r.thumb || 'https://placehold.co/36';
-    el.innerHTML = `<img class="avatar" src="${thumb}" /><div style="flex:1"><div style="font-weight:600">${r.name}</div><div class="text-sm text-gray-500">${r.lastMessage?escapeHtml(r.lastMessage.slice(0,48)):'설명 없음'}</div></div>`;
-    
-    const actions = document.createElement('div'); actions.style.marginLeft='8px';
-    // 초대 버튼은 이제 필요 없으나 UI 유지를 위해 주석 처리하거나 제거 (요청에 따라 제거하지 않고 텍스트 아이콘만 변경)
-    const inviteBtn = document.createElement('button'); 
-    inviteBtn.className='icon-btn'; 
-    inviteBtn.textContent='👤+'; // 텍스트 아이콘
-    inviteBtn.title='초대';
-    inviteBtn.onclick = (e)=>{ e.stopPropagation(); openInviteModal(id); };
-    
-    const pencil = document.createElement('button'); 
-    pencil.className='icon-btn'; 
-    pencil.textContent='⚙'; // 텍스트 아이콘
-    pencil.title='설정';
-    pencil.onclick = async (e)=>{ 
-      e.stopPropagation(); 
-      await openEditRoomNameModal(id, r.name); 
-      loadRooms(); 
-    };
-    
-    actions.appendChild(inviteBtn); 
-    actions.appendChild(pencil);
-    el.appendChild(actions);
-    el.addEventListener('click', ()=> selectRoom(id));
-    roomsList.appendChild(el);
-  });
-}
-
-/* ---------- invitations: left-bottom list (disabled) ---------- */
-function attachInvitationsListener(uid){
-  // 기존 초대 로직은 요청사항에 따라 비활성화
-}
-
-/* ---------- invite modal (send) (unchanged) ---------- */
-function openInviteModal(roomId){
-  const modal = openModal(`<div style="display:flex;flex-direction:column;gap:8px">
-    <div style="font-weight:700">초대 보내기</div>
-    <input id="inviteTag" placeholder="상대 태그 입력 (예: zzapcho)" style="padding:.6rem;border-radius:8px;border:1px solid var(--border)"/>
-    <div style="display:flex;justify-content:flex-end;gap:8px">
-      <button id="inviteCancel" class="btn-ghost">취소</button>
-      <button id="inviteSend" class="btn">보내기</button>
-    </div>
-  </div>`);
-  modal.querySelector('#inviteCancel').onclick = ()=> modal.remove();
-  modal.querySelector('#inviteSend').onclick = async ()=>{
-    const tag = modal.querySelector('#inviteTag').value.trim().toLowerCase(); 
-    if(!tag) return toast('태그를 입력하세요'); 
-    const tSnap = await db.ref('tags/'+tag).once('value'); 
-    if(!tSnap.exists()) return toast('해당 태그를 가진 사용자가 없습니다.'); 
-    const targetUid = tSnap.val();
-    
-    // **초대 발송 대신, 바로 해당 유저를 방 멤버로 추가**
-    await db.ref('rooms/'+roomId+'/members/'+targetUid).set(true);
-    
-    modal.remove(); 
-    toast(tag + '님을 방에 추가했습니다.'); // 초대 발송 메시지 변경
-  };
-}
-
-/* ---------- select room & messages ---------- */
-// **요청사항 반영: 방 나가기 -> DB members에서 완전히 삭제**
-leaveRoomBtn.onclick = async ()=>{
-  if(await openConfirmModal('방 나가기', '정말로 이 방을 나가시겠습니까? 나가면 방 목록에서 사라집니다.')) {
-    const myUid = auth.currentUser?auth.currentUser.uid:getLocalProfile().uid;
-    // DB에서 멤버 정보 삭제
-    await db.ref('rooms/'+currentRoom+'/members/'+myUid).remove();
-    // clear chat area and load rooms
-    currentRoom = null; roomTitle.textContent = '— 방 선택 —'; leaveRoomBtn.style.display='none';
-    chatBody.innerHTML = '';
-    loadRooms();
-    toast('방에서 나왔습니다. 방 목록에서 해당 방이 사라졌습니다.');
-  }
-};
-
-async function selectRoom(roomId){
-  if(messagesRef && messageListener) messagesRef.off('child_added', messageListener);
-  currentRoom = roomId; chatBody.innerHTML=''; roomTitle.textContent='로딩...'; roomInfo.textContent='';
-  const rs = await db.ref('rooms/'+roomId).once('value'); const meta = rs.val()||{};
-  roomTitle.textContent = meta.name || '방'; roomInfo.textContent = '';
-  leaveRoomBtn.style.display='inline-block';
-  messagesRef = db.ref('rooms/'+roomId+'/messages');
-  messageListener = messagesRef.limitToLast(MSG_LIMIT).on('child_added', snap=>{
-    const m = Object.assign({key:snap.key}, snap.val());
-    insertMessage(m);
-  });
-  messagesRef.on('child_changed', snap=>{ const m=Object.assign({key:snap.key}, snap.val()); updateMessageInUI(m); });
-  messagesRef.on('child_removed', snap=>{ removeMessageFromUI(snap.key); });
-}
-
-/* message grouping & render */
-function insertMessage(m){
-  const lastBlock = chatBody.lastElementChild;
-  const local = getLocalProfile();
-  const myUid = auth.currentUser?auth.currentUser.uid:local.uid;
-  const isMe = (m.uid && myUid && m.uid===myUid) || (!m.uid && m.author===local.name);
-  
-  // 그룹핑 기준: 같은 작성자 && 5분 이내
-  if(lastBlock && lastBlock.dataset && lastBlock.dataset.author === (m.uid||m.author) && (m.ts - Number(lastBlock.dataset.lastTs) < 5*60*1000)){
-    // append bubble to lastBlock stack
-    const stack = lastBlock.querySelector('.messages-stack');
-    appendBubble(stack, m, isMe);
-    lastBlock.dataset.lastTs = m.ts;
-  } else {
-    // create new block
-    const block = document.createElement('div'); block.className='msg-block' + (isMe?' own':'');
-    block.dataset.author = m.uid||m.author; block.dataset.lastTs = m.ts;
-    
-    const avatarCol = document.createElement('div'); avatarCol.className='avatar-col';
-    const img = document.createElement('img'); img.className='avatar'; img.src = m.photoURL || (local.photoURL || 'https://placehold.co/88');
-    avatarCol.appendChild(img);
-    
-    const container = document.createElement('div'); container.style.minWidth='120px';
-    
-    // top meta line: nickname, tag, time (왼쪽에서부터)
-    const meta = document.createElement('div'); meta.className='meta-line';
-    const nameSpan = document.createElement('span'); nameSpan.innerHTML = `<strong>${escapeHtml(m.author||'익명')}</strong>`;
-    const tagSpan = document.createElement('span'); tagSpan.className='text-sm text-gray-500'; tagSpan.textContent = '#'+(m.tag||'—');
-    const timeSpan = document.createElement('span'); timeSpan.className='text-sm text-gray-500'; timeSpan.textContent = new Date(m.ts).toLocaleTimeString();
-    meta.appendChild(nameSpan); meta.appendChild(tagSpan); meta.appendChild(timeSpan);
-    
-    const stack = document.createElement('div'); stack.className='messages-stack';
-    appendBubble(stack, m, isMe);
-    
-    // actions (show on hover)
-    const actions = document.createElement('div'); actions.className='controls'; actions.style.marginTop='6px';
-    
-    // reply
-    const replyBtn = document.createElement('button'); replyBtn.className='icon-btn'; replyBtn.textContent='RE'; replyBtn.title='답장'; // 텍스트 아이콘
-    replyBtn.onclick = ()=>{ replyTo = m.key; replyText.textContent = m.text ? m.text.slice(0,120) : '[첨부]'; replyPreview.style.display='flex'; };
-    actions.appendChild(replyBtn);
-    
-    // edit/delete for own
-    if(isMe){
-      const edit = document.createElement('button'); edit.className='icon-btn'; edit.textContent='ED'; edit.title='수정'; // 텍스트 아이콘
-      edit.onclick = async ()=>{ 
-        const newText = await openEditMessageModal(m.text||''); 
-        if(newText!==null) await db.ref('rooms/'+currentRoom+'/messages/'+m.key).update({ text:newText, edited:true }); 
-      };
-      const del = document.createElement('button'); del.className='icon-btn delete'; del.textContent='DE'; del.title='삭제'; // 텍스트 아이콘
-      del.onclick = async ()=>{ 
-        if(await openConfirmModal('메시지 삭제','정말로 이 메시지를 삭제하시겠습니까?')) { 
-          await db.ref('rooms/'+currentRoom+'/messages/'+m.key).remove(); 
-        }
-      };
-      actions.appendChild(edit); actions.appendChild(del);
-    }
-    container.appendChild(meta); container.appendChild(stack); container.appendChild(actions);
-    
-    // 내 메시지일 경우 순서 변경
-    if(isMe){
-      block.appendChild(container); 
-      block.appendChild(avatarCol);
-    } else {
-      block.appendChild(avatarCol); 
-      block.appendChild(container);
-    }
-    
-    chatBody.appendChild(block);
-    chatBody.scrollTop = chatBody.scrollHeight;
-  }
-  markRead(m.key);
-}
-
-function appendBubble(stack, m, isMe){
-  const bubble = document.createElement('div'); bubble.id='msg_'+m.key; bubble.className='bubble ' + (isMe?'own':'other');
-  
-  // reply snippet inside bubble if m.replyTo
-  if(m.replyTo){
-    const q = document.createElement('div'); q.className='reply-small'; q.textContent='답글 로딩...'; bubble.appendChild(q);
-    db.ref('rooms/'+currentRoom+'/messages/'+m.replyTo).once('value').then(snap=>{
-      if(snap.exists()){
-        q.textContent = '답글 → '+ (snap.val().text||'[첨부]');
-        q.onclick = ()=>{ const tgt = document.getElementById('msg_'+m.replyTo); if(tgt){ tgt.scrollIntoView({behavior:'smooth',block:'center'}); tgt.classList.add('reply-target'); setTimeout(()=>tgt.classList.remove('reply-target'),1200); } };
-        // CSS 조정은 유지
-        const len = (snap.val().text||'').length;
-        const approx = Math.min(520, Math.max(120, Math.floor(len*6)));
-        if(approx > (document.querySelector('.chat-body').clientWidth/3)) { q.style.whiteSpace='normal'; }
-        q.style.maxWidth = approx+'px';
-      }
-    });
-  }
-  // attachments
-  if(m.attachments && Array.isArray(m.attachments)){
-    m.attachments.forEach(a=>{
-      if(a.type && a.type.startsWith('image/')){
-        const img = document.createElement('img'); img.src=a.url; img.style.maxWidth='220px'; img.style.borderRadius='8px'; img.style.display='block'; img.style.marginBottom='6px';
-        bubble.appendChild(img);
-      } else {
-        const link = document.createElement('a'); link.href=a.url; link.target='_blank'; link.textContent=a.name||'파일'; bubble.appendChild(link);
-      }
-    });
-  }
-  // text + mentions
-  if(m.text){
-    let text = escapeHtml(m.text);
-    const mentions = (m.text.match(/@([a-zA-Z0-9_]+)/g) || []).map(x=>x.replace('@','').toLowerCase());
-    for(const t of mentions){
-      text = text.replace(new RegExp('@'+t,'gi'), `<span class="mention-inline">@${t}</span>`);
-      const local = getLocalProfile();
-      if(local && local.tag && local.tag.toLowerCase()===t){ bubble.style.background = 'var(--mention-bg)'; }
-    }
-    const wrap = document.createElement('div'); wrap.innerHTML = marked.parse(text); bubble.appendChild(wrap);
-  }
-  if(m.edited) bubble.innerHTML += '<div class="text-sm text-gray-500">(편집됨)</div>';
-  stack.appendChild(bubble);
-}
-
-/* update / remove */
-function updateMessageInUI(m){
-  const old = document.getElementById('msg_'+m.key);
-  if(!old) return;
-  const parent = old.parentElement;
-  old.remove();
-  appendBubble(parent, m, parent.closest('.msg-block')?.classList.contains('own'));
-}
-function removeMessageFromUI(key){
-  const el = document.getElementById('msg_'+key);
-  if(!el) return;
-  const parent = el.parentElement;
-  el.remove();
-  // if parent (stack) empty, remove block
-  if(parent && parent.children.length===0){
-    const block = parent.closest('.msg-block');
-    if(block) block.remove();
-  }
-}
-
-/* ---------- send message (unchanged) ---------- */
-attachBtn.addEventListener('click', ()=> fileInput.click());
-fileInput.addEventListener('change', e=>{ const f=e.target.files[0]; if(!f) return; selectedFile=f; toast('파일 준비됨: '+f.name); });
-
-let sending=false;
-sendBtn.addEventListener('click', ()=> sendMessage());
-msgInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendMessage(); });
-
-async function sendMessage(){
-  if(!currentRoom) return toast('먼저 방을 선택하세요');
-  if(sending) return;
-  sending=true; sendBtn.disabled=true; sendBtn.textContent='전송중...';
-  const local = getLocalProfile();
-  const author = auth.currentUser ? auth.currentUser.displayName : (local.name || '익명');
-  const uidv = auth.currentUser ? auth.currentUser.uid : local.uid;
-  const text = (msgInput.value||'').trim();
-  const attachments = [];
-  if(selectedFile){ try{ const meta = await uploadFile(selectedFile,'room_'+currentRoom); attachments.push(meta); }catch(e){ toast('업로드 실패'); sending=false; sendBtn.disabled=false; sendBtn.textContent='전송'; return; } }
-  if(!text && attachments.length===0){ sending=false; sendBtn.disabled=false; sendBtn.textContent='전송'; return; }
-  const payload = { author, uid:uidv, text:text||'', attachments:attachments.length?attachments:null, ts: now(), edited:false, tag:getLocalProfile().tag || null };
-  if(replyTo) payload.replyTo = replyTo;
-  await db.ref('rooms/'+currentRoom+'/messages').push(payload);
-  await db.ref('rooms/'+currentRoom).update({ lastMessage: text||'[첨부]', lastTs: now() });
-  msgInput.value=''; selectedFile=null; replyTo=null; replyPreview.style.display='none';
-  sending=false; sendBtn.disabled=false; sendBtn.textContent='전송';
-}
-
-/* upload helper (unchanged) */
-async function uploadFile(file,prefix){
-  const path = (prefix||'uploads') + '/' + Date.now() + '_' + encodeURIComponent(file.name);
-  const ref = storage.ref(path);
-  const snap = await ref.put(file);
-  const url = await snap.ref.getDownloadURL();
-  return { url, name: file.name, size: file.size, type: file.type };
-}
-
-/* mark read (unchanged) */
-async function markRead(msgKey){
-  if(!currentRoom||!msgKey) return;
-  const myUid = auth.currentUser ? auth.currentUser.uid : getLocalProfile().uid;
-  if(!myUid) return;
-  const ref = db.ref('rooms/'+currentRoom+'/messages/'+msgKey+'/reads/'+myUid);
-  const snap = await ref.once('value'); if(!snap.exists()) await ref.set(now());
-}
-
-/* presence & auth */
-auth.onAuthStateChanged(async user=>{
-  if(user){ 
-    await ensureProfile(); 
-    const presRef = db.ref('presence/'+user.uid); 
-    presRef.set({ online:true, ts: now() }); 
-    presRef.onDisconnect().remove(); 
-    loadRooms(); // auth change 시 방 다시 로드
-  }
-  else {
-    await ensureProfile();
-    loadRooms(); // anon mode 시 방 로드
-  }
-});
-
-/* init */
-(async function init(){
-  // init 로직은 authStateChanged 에서 처리되도록 변경
-})();
-</script>
-</body>
-</html>
+async function selectRoom(id){if(messagesRef&&messageListener)messagesRef.off('child_added',messageListener);currentRoom=id;chatBody.innerHTML='';roomTitle.textContent='로딩중';const rs=await db.ref('rooms/'+id).once('value');const meta=rs.val()||{};roomTitle.textContent=meta.name||'방';leaveRoomBtn.style.display='inline-block';messagesRef=db.ref('rooms/'+id+'/messages');messageListener=messagesRef.limitToLast(MSG_LIMIT).on('child_added',snap=>insertMessage(Object.assign({key:snap.key},snap.val())));}
+function insertMessage(m){const l=chatBody.lastElementChild;const me=getLocalProfile();const my=auth.currentUser?auth.currentUser.uid:me.uid;const isMe=m.uid===my;if(l&&l.dataset.author===(m.uid||m.author)&&m.ts-Number(l.dataset.lastTs)<300000){appendBubble(l.querySelector('.messages-stack'),m,isMe);l.dataset.lastTs=m.ts}else{const b=document.createElement('div');b.className='msg-block'+(isMe?' own':'');b.dataset.author=m.uid||m.author;b.dataset.lastTs=m.ts;const av=document.createElement('div');av.className='avatar-col';const i=document.createElement('
